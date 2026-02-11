@@ -8,10 +8,13 @@ import com.emigran.nifi.migration.model.Block;
 import com.emigran.nifi.migration.model.DiyBlockRequest;
 import com.emigran.nifi.migration.model.DiyDataflowRequest;
 import com.emigran.nifi.migration.model.Field;
+import com.emigran.nifi.migration.model.TransformFlowProperties;
 import com.emigran.nifi.migration.model.Workspace;
 import com.emigran.nifi.migration.model.WorkspaceCreateRequest;
 import com.emigran.nifi.migration.model.DataflowStatus;
 import com.emigran.nifi.migration.model.Schedule;
+import com.emigran.nifi.migration.util.JsltMappingUtil;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,16 +32,24 @@ public class NifiMigrationService {
     private final NifiOldClient oldClient;
     private final NifiNewClient newClient;
     private final FlowXmlSecretResolver secretResolver;
+    private final FlowXmlTransformPropertiesExtractor transformPropertiesExtractor;
     private final MigrationResultLogger resultLogger;
+
+    /** Fixed block type IDs for transform replacement: convert_csv_to_json, jslt_transform, jolt_transform. */
+    private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
+    private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
+    private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
 
     @Autowired
     public NifiMigrationService(NifiOldClient oldClient,
                                 NifiNewClient newClient,
                                 FlowXmlSecretResolver secretResolver,
+                                FlowXmlTransformPropertiesExtractor transformPropertiesExtractor,
                                 MigrationResultLogger resultLogger) {
         this.oldClient = oldClient;
         this.newClient = newClient;
         this.secretResolver = secretResolver;
+        this.transformPropertiesExtractor = transformPropertiesExtractor;
         this.resultLogger = resultLogger;
     }
 
@@ -48,7 +59,7 @@ public class NifiMigrationService {
         List<Workspace> enabled = oldClient.getWorkspaces()
                 .stream()
                 .filter(Workspace::isEnabled)
-                .filter(w-> w.getId().toString().equals("493"))
+                .filter(w-> w.getId().toString().equals("459"))
                 .collect(Collectors.toList());
         for (Workspace ws : enabled) {
             log.info("workspace migration needed");
@@ -82,7 +93,7 @@ public class NifiMigrationService {
         List<DataflowSummary> liveDataflows = oldClient.getDataflows(workspace.getId())
                 .stream()
                 .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
-                .filter(df -> df.getUuid().equalsIgnoreCase("2eb514a1-e845-373c-98e2-8ffb617c45a4"))
+                .filter(df -> df.getUuid().equalsIgnoreCase("d02641ff-fb75-3d25-85a4-51b728837861"))
                 .collect(Collectors.toList());
 
         for (DataflowSummary summary : liveDataflows) {
@@ -98,11 +109,61 @@ public class NifiMigrationService {
                 return;
             }
             secretResolver.resolve(detail, sourceWorkspace.getName(), sourceWorkspace.getUuid(), summary.getUuid());
-            DiyDataflowRequest diyRequest = buildDiyRequest(detail);
+
+            TransformContext transformContext = null;
+            DiyDataflowRequest diyRequest;
+            if (isTransformFlow(detail)) {
+                Block transformBlock = detail.getBlocks().stream()
+                        .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
+                        .findFirst()
+                        .orElse(null);
+                String blockNamePrefix = transformBlock != null ? transformBlock.getName() : null;
+                TransformFlowProperties transformProps = transformPropertiesExtractor.extract(summary.getUuid(), blockNamePrefix);
+                String jsltScript = null;
+                String recordGroupBySource = null;
+                try {
+                    if (transformProps.getHeaderMappingJson() != null && !transformProps.getHeaderMappingJson().isEmpty()) {
+                        jsltScript = JsltMappingUtil.fromHeaderMappingWithExpressions(
+                                transformProps.getHeaderMappingJson(),
+                                transformProps.getDateColumnOutputKey(),
+                                transformProps.getExistingDateFormat(),
+                                transformProps.getNewDateFormat(),
+                                transformProps.getTimezoneId());
+                    }
+                    if (transformProps.getRecordGroupBy() != null && transformProps.getHeaderMappingJson() != null) {
+                        recordGroupBySource = JsltMappingUtil.resolveGroupByToSourceNames(
+                                transformProps.getRecordGroupBy(),
+                                transformProps.getHeaderMappingJson());
+                    }
+                } catch (Exception ex) {
+                    resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(),
+                            "Transform JSLT/group-by generation failed", ex);
+                    return;
+                }
+                transformContext = new TransformContext(
+                        recordGroupBySource,
+                        jsltScript,
+                        transformProps.getJoltSpec(),
+                        transformProps.getGroupSize(),
+                        transformProps.getSortHeaders(),
+                        transformProps.getAlphabeticalSort(),
+                        transformProps.getAttributionType(),
+                        transformProps.getAttributionCode(),
+                        transformProps.getHeaderValue(),
+                        transformProps.getChildTillCode(),
+                        transformProps.getChildOrgId());
+                diyRequest = buildDiyRequestForTransform(detail, transformContext);
+            } else {
+                diyRequest = buildDiyRequest(detail);
+            }
+
             DataflowDetail created = newClient.createDiyDataflow(targetWorkspace.getId(), diyRequest);
             String targetUuid = created != null && created.getUuid() != null ? created.getUuid() : summary.getUuid();
 
             DataflowDetail updatePayload = mergeForUpdate(created != null ? created : detail, detail);
+            if (transformContext != null && updatePayload != null && updatePayload.getBlocks() != null) {
+                applyTransformContextToBlocks(updatePayload.getBlocks(), transformContext);
+            }
 
             DataflowDetail updated = newClient.updateDataflow(targetWorkspace.getId(), targetUuid, updatePayload);
             Schedule sched = detail.getSchedule();
@@ -132,6 +193,57 @@ public class NifiMigrationService {
         } catch (Exception ex) {
             resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), "Migration failed", ex);
         }
+    }
+
+    private boolean isTransformFlow(DataflowDetail detail) {
+        if (detail == null || detail.getBlocks() == null) {
+            return false;
+        }
+        return detail.getBlocks().stream()
+                .anyMatch(b -> b.getType() != null && b.getType().startsWith("transform_to_"));
+    }
+
+    /**
+     * Builds DIY request for a transform flow: replaces the single transform_to_* block with
+     * convert_csv_to_json(72), jslt_transform(100), jolt_transform(101). Blocks after the
+     * transform get blockOrder increased by 2.
+     */
+    private DiyDataflowRequest buildDiyRequestForTransform(DataflowDetail detail, TransformContext transformContext) {
+        List<Block> blocks = detail.getBlocks() == null ? Collections.emptyList() : detail.getBlocks();
+        Block transformBlock = blocks.stream()
+                .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
+                .findFirst()
+                .orElse(null);
+        if (transformBlock == null) {
+            return buildDiyRequest(detail);
+        }
+        int transformOrder = transformBlock.getOrder();
+        String baseName = transformBlock.getName();
+
+        List<DiyBlockRequest> out = new ArrayList<>();
+        for (Block b : blocks) {
+            if (b.getType() != null && b.getType().startsWith("transform_to_")) {
+                out.add(diyBlock(baseName + "-csv", "convert_csv_to_json", transformOrder, CONVERT_CSV_TO_JSON_BLOCK_ID));
+                out.add(diyBlock(baseName + "-jslt", "jslt_transform", transformOrder + 1, JSLT_TRANSFORM_BLOCK_ID));
+                out.add(diyBlock(baseName + "-jolt", "jolt_transform", transformOrder + 2, JOLT_TRANSFORM_BLOCK_ID));
+            } else if (b.getOrder() > transformOrder) {
+                DiyBlockRequest r = toDiyBlock(b);
+                r.setBlockOrder(b.getOrder() + 2);
+                out.add(r);
+            } else {
+                out.add(toDiyBlock(b));
+            }
+        }
+        return new DiyDataflowRequest(detail.getName(), out);
+    }
+
+    private DiyBlockRequest diyBlock(String name, String type, int order, int blockId) {
+        DiyBlockRequest req = new DiyBlockRequest();
+        req.setBlockName(name);
+        req.setBlockType(type);
+        req.setBlockOrder(order);
+        req.setBlockId(blockId);
+        return req;
     }
 
     private DiyDataflowRequest buildDiyRequest(DataflowDetail detail) {
@@ -229,5 +341,144 @@ public class NifiMigrationService {
         mapping.put("goodwill_points_issue", "goodwill_points_issue");
         mapping.put("Convert_CSV/Avro_file_to_Json", "json_to_csv_converter");
         return mapping;
+    }
+
+    /**
+     * Sets field values on the three transform replacement blocks (72, 100, 101) from the computed context.
+     * Matches fields by name (case-insensitive) using common API field names.
+     */
+    private void applyTransformContextToBlocks(List<Block> blocks, TransformContext ctx) {
+        if (blocks == null || ctx == null) {
+            return;
+        }
+        for (Block block : blocks) {
+            int id = block.getBlockTypeId();
+            if (block.getFields() == null) {
+                continue;
+            }
+            if (id == CONVERT_CSV_TO_JSON_BLOCK_ID) {
+                if (ctx.getRecordGroupBySource() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"Record Group By", "recordGroupBy", "groupBy"}, ctx.getRecordGroupBySource());
+                }
+                if (ctx.getGroupSize() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"groupSize", "Minimum Group Record", "Minimum Group Records"}, ctx.getGroupSize());
+                }
+                if (ctx.getSortHeaders() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"sortHeaders", "Sort Headers"}, ctx.getSortHeaders());
+                }
+                if (ctx.getAlphabeticalSort() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"alphabeticalSort", "Use Alphabetical Sort"}, ctx.getAlphabeticalSort());
+                }
+                if (ctx.getAttributionType() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"attribution_type", "attributionType"}, ctx.getAttributionType());
+                }
+                if (ctx.getAttributionCode() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"attribution_code", "attributionCode"}, ctx.getAttributionCode());
+                }
+                if (ctx.getHeaderValue() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"header_value", "headerValue"}, ctx.getHeaderValue());
+                }
+                if (ctx.getChildTillCode() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"child_till_code", "childTillCode"}, ctx.getChildTillCode());
+                }
+                if (ctx.getChildOrgId() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"child_org_id", "childOrgId"}, ctx.getChildOrgId());
+                }
+            } else if (id == JSLT_TRANSFORM_BLOCK_ID && ctx.getJsltScript() != null) {
+                setFieldValueByKeyword(block.getFields(), new String[]{"transformation", "JSLT Transform", "JSLT Script", "jsltScript", "transform"}, ctx.getJsltScript());
+            } else if (id == JOLT_TRANSFORM_BLOCK_ID && ctx.getJoltSpec() != null) {
+                setFieldValueByKeyword(block.getFields(), new String[]{"joltTransformation", "Jolt Specification", "joltSpec", "Jolt Spec"}, ctx.getJoltSpec());
+            }
+        }
+    }
+
+    private void setFieldValueByKeyword(List<Field> fields, String[] keywords, String value) {
+        for (Field f : fields) {
+            if (f.getName() == null) {
+                continue;
+            }
+            String nameLower = f.getName().toLowerCase();
+            for (String kw : keywords) {
+                if (kw != null && nameLower.contains(kw.toLowerCase())) {
+                    f.setValue(value);
+                    return;
+                }
+            }
+        }
+    }
+
+    private static final class TransformContext {
+        private final String recordGroupBySource;
+        private final String jsltScript;
+        private final String joltSpec;
+        private final String groupSize;
+        private final String sortHeaders;
+        private final String alphabeticalSort;
+        private final String attributionType;
+        private final String attributionCode;
+        private final String headerValue;
+        private final String childTillCode;
+        private final String childOrgId;
+
+        TransformContext(String recordGroupBySource, String jsltScript, String joltSpec,
+                        String groupSize, String sortHeaders, String alphabeticalSort,
+                        String attributionType, String attributionCode, String headerValue,
+                        String childTillCode, String childOrgId) {
+            this.recordGroupBySource = recordGroupBySource;
+            this.jsltScript = jsltScript;
+            this.joltSpec = joltSpec;
+            this.groupSize = groupSize;
+            this.sortHeaders = sortHeaders;
+            this.alphabeticalSort = alphabeticalSort;
+            this.attributionType = attributionType;
+            this.attributionCode = attributionCode;
+            this.headerValue = headerValue;
+            this.childTillCode = childTillCode;
+            this.childOrgId = childOrgId;
+        }
+
+        String getRecordGroupBySource() {
+            return recordGroupBySource;
+        }
+
+        String getJsltScript() {
+            return jsltScript;
+        }
+
+        String getJoltSpec() {
+            return joltSpec;
+        }
+
+        String getGroupSize() {
+            return groupSize;
+        }
+
+        String getSortHeaders() {
+            return sortHeaders;
+        }
+
+        String getAlphabeticalSort() {
+            return alphabeticalSort;
+        }
+
+        String getAttributionType() {
+            return attributionType;
+        }
+
+        String getAttributionCode() {
+            return attributionCode;
+        }
+
+        String getHeaderValue() {
+            return headerValue;
+        }
+
+        String getChildTillCode() {
+            return childTillCode;
+        }
+
+        String getChildOrgId() {
+            return childOrgId;
+        }
     }
 }
