@@ -1,0 +1,66 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: camunda-nifi-test
+  datasource:
+    url: jdbc:h2:mem:camunda;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    generate-ddl: true
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: update
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+camunda.bpm:
+  admin-user:
+    id: demo
+    password: demo
+  filter:
+    create: All tasks
+  history-level: full
+  metrics:
+    db-reporter-activate: false
+  database:
+    schema-update: true
+
+nifi:
+  migration:
+    old:
+      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://crm-nightly-new.connectplus.capillarytech.com/api}
+    new:
+      base-url: ${NIFI_MIGRATION_NEW_BASE_URL:https://crm-nightly-new.connectplus.capillarytech.com/api}
+    auth:
+      # Set this to the raw Base64 token only (no "Basic " prefix)
+      basic: ${NIFI_MIGRATION_AUTH_BASIC:YXV0b21hdGlvbl91c2VyOks1MjFyITMzYQ==}
+    source-header: ${NIFI_MIGRATION_SOURCE_HEADER:migration}
+    flow-xml:
+      sftp:
+        host: ${NIFI_MIGRATION_FLOW_XML_SFTP_HOST:data.capillarydata.com}
+        username: ${NIFI_MIGRATION_FLOW_XML_SFTP_USERNAME:capillary}
+        password: ${NIFI_MIGRATION_FLOW_XML_SFTP_PASSWORD:captech123}
+      remote-path: ${NIFI_MIGRATION_FLOW_XML_REMOTE_PATH:/Capillary testing/flow.xml/flow.xml}
+      cache-dir: ${NIFI_MIGRATION_FLOW_XML_CACHE_DIR:./flow-cache}
+      sensitive-key: ${NIFI_MIGRATION_FLOW_XML_SENSITIVE_KEY:}
+    log-dir: ${NIFI_MIGRATION_LOG_DIR:/tmp/nifi-migration-logs}
+    glue:
+      block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://crm-nightly-new.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
+    string:
+      encryptor:
+        algorithm: ${NIFI_MIGRATION_STRING_ENCRYPTOR_ALGORITHM:PBEWITHMD5AND256BITAES-CBC-OPENSSL}
+        provider: ${NIFI_MIGRATION_STRING_ENCRYPTOR_PROVIDER:BC}
+        key: ${NIFI_MIGRATION_STRING_ENCRYPTOR_KEY:nififtw!}
+
+logging:
+  level:
+    com.emigran: INFO

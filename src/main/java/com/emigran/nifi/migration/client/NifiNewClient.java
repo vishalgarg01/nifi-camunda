@@ -1,0 +1,55 @@
+package com.emigran.nifi.migration.client;
+
+import com.emigran.nifi.migration.config.MigrationProperties;
+import com.emigran.nifi.migration.model.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+@Component
+public class NifiNewClient {
+
+    private final NifiApiClient client;
+
+    @Autowired
+    public NifiNewClient(MigrationProperties properties) {
+        RestTemplate restTemplate = new RestTemplate();
+        this.client = new NifiApiClient(restTemplate, properties.getNewBaseUrl(), properties.getBasicAuthToken(),
+                properties.getSourceHeader());
+    }
+
+    public Workspace createWorkspace(WorkspaceCreateRequest request) {
+        ResponseEntity<Workspace> response = client.post("/workspaces", request, true, Workspace.class);
+        return response.getBody();
+    }
+
+    public List<Workspace> getWorkspaces() {
+        ResponseEntity<Workspace[]> response = client.get("/workspaces",true,  Workspace[].class);
+        Workspace[] body = response.getBody();
+        return body == null ? Collections.emptyList() : Arrays.asList(body);
+    }
+
+
+    public DataflowDetail createDiyDataflow(Long workspaceId, DiyDataflowRequest request) {
+        ResponseEntity<DataflowDetail> response = client.post(
+                "/workspaces/" + workspaceId + "/dataflows/diy", request, true, DataflowDetail.class);
+        return response.getBody();
+    }
+
+    public DataflowDetail updateDataflow(Long workspaceId, String uuid, DataflowDetail request) {
+        ResponseEntity<DataflowDetail> response = client.put(
+                "/workspaces/" + workspaceId + "/dataflows/" + uuid, request, true, DataflowDetail.class);
+        return response.getBody();
+    }
+
+    public Schedule updateSchedule(Long workspaceId, String uuid, Schedule schedule) {
+        ResponseEntity<Schedule> response = client.put(
+                "/workspaces/" + workspaceId + "/dataflows/" + uuid + "/schedule", schedule, true, Schedule.class);
+        return response.getBody();
+    }
+}
