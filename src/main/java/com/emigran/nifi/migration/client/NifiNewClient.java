@@ -52,4 +52,12 @@ public class NifiNewClient {
                 "/workspaces/" + workspaceId + "/dataflows/" + uuid + "/schedule", schedule, true, Schedule.class);
         return response.getBody();
     }
+
+    /**
+     * Updates the concurrency (concurrentlySchedulableTaskCount) for a processor in a dataflow.
+     * PUT /api/processors/concurrency
+     */
+    public void updateProcessorConcurrency(ProcessorConcurrencyRequest request) {
+        client.put("/processors/concurrency", request, true, Void.class);
+    }
 }

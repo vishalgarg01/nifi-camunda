@@ -12,8 +12,10 @@ import com.emigran.nifi.migration.model.TransformFlowProperties;
 import com.emigran.nifi.migration.model.Workspace;
 import com.emigran.nifi.migration.model.WorkspaceCreateRequest;
 import com.emigran.nifi.migration.model.DataflowStatus;
+import com.emigran.nifi.migration.model.ProcessorConcurrencyRequest;
 import com.emigran.nifi.migration.model.Schedule;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
+import com.emigran.nifi.migration.service.FlowXmlConcurrencyExtractor.ProcessorConcurrencyInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +35,7 @@ public class NifiMigrationService {
     private final NifiNewClient newClient;
     private final FlowXmlSecretResolver secretResolver;
     private final FlowXmlTransformPropertiesExtractor transformPropertiesExtractor;
+    private final FlowXmlConcurrencyExtractor flowXmlConcurrencyExtractor;
     private final MigrationResultLogger resultLogger;
 
     /** Fixed block type IDs for transform replacement: convert_csv_to_json, jslt_transform, jolt_transform. */
@@ -45,11 +48,13 @@ public class NifiMigrationService {
                                 NifiNewClient newClient,
                                 FlowXmlSecretResolver secretResolver,
                                 FlowXmlTransformPropertiesExtractor transformPropertiesExtractor,
+                                FlowXmlConcurrencyExtractor flowXmlConcurrencyExtractor,
                                 MigrationResultLogger resultLogger) {
         this.oldClient = oldClient;
         this.newClient = newClient;
         this.secretResolver = secretResolver;
         this.transformPropertiesExtractor = transformPropertiesExtractor;
+        this.flowXmlConcurrencyExtractor = flowXmlConcurrencyExtractor;
         this.resultLogger = resultLogger;
     }
 
@@ -59,7 +64,7 @@ public class NifiMigrationService {
         List<Workspace> enabled = oldClient.getWorkspaces()
                 .stream()
                 .filter(Workspace::isEnabled)
-                .filter(w-> w.getId().toString().equals("459"))
+                .filter(w-> w.getId().toString().equals("493"))
                 .collect(Collectors.toList());
         for (Workspace ws : enabled) {
             log.info("workspace migration needed");
@@ -93,7 +98,7 @@ public class NifiMigrationService {
         List<DataflowSummary> liveDataflows = oldClient.getDataflows(workspace.getId())
                 .stream()
                 .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
-                .filter(df -> df.getUuid().equalsIgnoreCase("d02641ff-fb75-3d25-85a4-51b728837861"))
+                .filter(df -> df.getUuid().equalsIgnoreCase("2eb514a1-e845-373c-98e2-8ffb617c45a4"))
                 .collect(Collectors.toList());
 
         for (DataflowSummary summary : liveDataflows) {
@@ -176,6 +181,8 @@ public class NifiMigrationService {
                 }
             }
 
+            updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, targetUuid, updated);
+
             if (updated != null && updated.getStatus() != null) {
                 DataflowStatus st = updated.getStatus();
                 int disabled = st.getDisabledCount() == null ? 0 : st.getDisabledCount();
@@ -193,6 +200,86 @@ public class NifiMigrationService {
         } catch (Exception ex) {
             resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), "Migration failed", ex);
         }
+    }
+
+    /**
+     * For all processors in the old dataflow (flow.xml) with concurrency != 1: resolve which
+     * old block each processor belongs to, find the corresponding new block (same name), and
+     * call the glue API to update concurrency on the new block. For InvokeHttp we pass
+     * processorType as InvokeHttpV2.
+     */
+    private void updateProcessorConcurrencyFromFlowXml(String oldDataflowUuid, DataflowDetail oldDetail,
+                                                       String newDataflowUuid, DataflowDetail newDataflow) {
+        if (oldDetail == null || oldDetail.getBlocks() == null || newDataflow == null || newDataflow.getBlocks() == null) {
+            return;
+        }
+        List<ProcessorConcurrencyInfo> toUpdate = flowXmlConcurrencyExtractor.getProcessorsWithConcurrencyNotOne(oldDataflowUuid);
+        for (ProcessorConcurrencyInfo info : toUpdate) {
+            Block oldBlock = findOldBlockForProcessor(oldDetail.getBlocks(), info.getProcessorName());
+            if (oldBlock == null) {
+                log.warn("Could not resolve old block for processor {} ({}); skipping concurrency update",
+                        info.getProcessorName(), info.getProcessorClass());
+                continue;
+            }
+            Block newBlock = findNewBlockByName(newDataflow.getBlocks(), oldBlock.getName());
+            if (newBlock == null) {
+                log.warn("No new block with name {} for processor {}; skipping concurrency update",
+                        oldBlock.getName(), info.getProcessorName());
+                continue;
+            }
+            String processorTypeForApi = "org.apache.nifi.processors.standard.InvokeHTTP".equals(info.getProcessorClass())
+                    ? "com.capillary.foundation.processors.InvokeHttpV2"
+                    : info.getProcessorClass();
+            ProcessorConcurrencyRequest request = new ProcessorConcurrencyRequest();
+            request.setDataflowId(newDataflowUuid);
+            request.setBlockType(newBlock.getType());
+            request.setBlockId("");
+            request.setBlockName(newBlock.getName());
+            request.setProcessorType(processorTypeForApi);
+            request.setConcurrentlySchedulableTaskCount(info.getCurrentConcurrency());
+            try {
+                newClient.updateProcessorConcurrency(request);
+                log.info("Updated concurrency to {} for processor {} (old block {} -> new block {})",
+                        info.getCurrentConcurrency(), info.getProcessorName(), oldBlock.getName(), newBlock.getName());
+            } catch (Exception ex) {
+                log.warn("Failed to update concurrency for processor {} (block {}): {}", info.getProcessorName(), newBlock.getName(), ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Finds which old block a processor belongs to by name. Processor names in flow.xml are
+     * typically "blockName_suffix" (e.g. connect-to-destination_2). Prefers longest match.
+     */
+    private Block findOldBlockForProcessor(List<Block> oldBlocks, String processorName) {
+        if (processorName == null || processorName.isEmpty() || oldBlocks == null) {
+            return null;
+        }
+        String procLower = processorName.toLowerCase();
+        List<Block> byNameLength = oldBlocks.stream()
+                .filter(b -> b.getName() != null && !b.getName().isEmpty())
+                .sorted((a, b) -> Integer.compare(
+                        b.getName().length(), a.getName().length()))
+                .collect(Collectors.toList());
+        for (Block b : byNameLength) {
+            String name = b.getName();
+            String nameLower = name.toLowerCase();
+            if (procLower.equals(nameLower) || procLower.startsWith(nameLower + "_")) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    /** Finds the new dataflow block with the given name (same name as old block after migration). */
+    private Block findNewBlockByName(List<Block> newBlocks, String blockName) {
+        if (blockName == null || newBlocks == null) {
+            return null;
+        }
+        return newBlocks.stream()
+                .filter(b -> blockName.equals(b.getName()))
+                .findFirst()
+                .orElse(null);
     }
 
     private boolean isTransformFlow(DataflowDetail detail) {
