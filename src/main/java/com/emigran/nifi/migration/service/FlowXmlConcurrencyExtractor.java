@@ -9,8 +9,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Extracts from flow.xml the list of processors whose concurrency is not 1.
@@ -21,6 +20,7 @@ import java.util.List;
 @Component
 public class FlowXmlConcurrencyExtractor {
     private static final Logger log = LoggerFactory.getLogger(FlowXmlConcurrencyExtractor.class);
+    public Set<String> httpProcessors = new HashSet<>(Arrays.asList("org.apache.nifi.processors.standard.InvokeHTTP", "com.capillary.foundation.processors.InvokeHttpV2", "com.capillary.foundation.processors.OAuthClientProcessor"));
 
     private final FlowXmlFetcher flowXmlFetcher;
 
@@ -88,7 +88,7 @@ public class FlowXmlConcurrencyExtractor {
             String processorClass = getChildText(processor, "class");
             int concurrency = parseConcurrency(getChildText(processor, "maxConcurrentTasks"));
 
-            if (concurrency == 1) {
+            if (concurrency == 1 && !httpProcessors.contains(processorClass) ) {
                 continue;
             }
             result.add(new ProcessorConcurrencyInfo(
