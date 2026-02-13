@@ -60,20 +60,39 @@ public class NifiMigrationService {
 
     private static final Map<String, String> LEGACY_TO_NEW = buildLegacyToNewBlockTypes();
 
-    public String migrateAll() {
-        List<Workspace> enabled = oldClient.getWorkspaces()
+    /**
+     * Runs migration. If workspaceId is provided, only that workspace is migrated; otherwise all
+     * enabled workspaces. If both workspaceId and dataflowId are provided, only that dataflow in
+     * that workspace is migrated; otherwise all live dataflows in the selected workspace(s).
+     *
+     * @param workspaceId optional; workspace id (Long as string) or name to migrate; null = all
+     * @param dataflowId  optional; dataflow UUID to migrate; only used when workspaceId is set; null = all
+     * @return path to the migration result log
+     */
+    public String migrateAll(String workspaceId, String dataflowId) {
+        List<Workspace> workspaces = oldClient.getWorkspaces()
                 .stream()
                 .filter(Workspace::isEnabled)
-                .filter(w-> w.getId().toString().equals("493"))
+                .filter(ws -> matchesWorkspace(ws, workspaceId))
                 .collect(Collectors.toList());
-        for (Workspace ws : enabled) {
-            log.info("workspace migration needed");
-            migrateWorkspace(ws);
+        for (Workspace ws : workspaces) {
+            log.info("Migrating workspace: {} (id={})", ws.getName(), ws.getId());
+            migrateWorkspace(ws, dataflowId);
         }
         return resultLogger.getOutputPath();
     }
 
-    private void migrateWorkspace(Workspace workspace) {
+    private static boolean matchesWorkspace(Workspace ws, String workspaceId) {
+        if (workspaceId == null || workspaceId.isEmpty()) {
+            return true;
+        }
+        if (ws.getId() != null && workspaceId.trim().equals(ws.getId().toString())) {
+            return true;
+        }
+        return ws.getName() != null && workspaceId.trim().equalsIgnoreCase(ws.getName());
+    }
+
+    private void migrateWorkspace(Workspace workspace, String dataflowIdFilter) {
         WorkspaceCreateRequest createRequest = new WorkspaceCreateRequest(workspace.getName(), workspace.getOrganisations());
         Workspace newWorkspace;
         try {
@@ -98,12 +117,19 @@ public class NifiMigrationService {
         List<DataflowSummary> liveDataflows = oldClient.getDataflows(workspace.getId())
                 .stream()
                 .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
-                .filter(df -> df.getUuid().equalsIgnoreCase("2eb514a1-e845-373c-98e2-8ffb617c45a4"))
+                .filter(df -> matchesDataflow(df, dataflowIdFilter))
                 .collect(Collectors.toList());
 
         for (DataflowSummary summary : liveDataflows) {
             migrateDataflow(workspace, newWorkspace, summary);
         }
+    }
+
+    private static boolean matchesDataflow(DataflowSummary df, String dataflowIdFilter) {
+        if (dataflowIdFilter == null || dataflowIdFilter.isEmpty()) {
+            return true;
+        }
+        return df.getUuid() != null && dataflowIdFilter.trim().equalsIgnoreCase(df.getUuid());
     }
 
     private void migrateDataflow(Workspace sourceWorkspace, Workspace targetWorkspace, DataflowSummary summary) {

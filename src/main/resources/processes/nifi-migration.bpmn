@@ -1,47 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-                  targetNamespace="http://emigran.com/camunda/nifi">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" targetNamespace="http://emigran.com/camunda/nifi" exporter="Camunda Modeler" exporterVersion="5.41.0">
   <bpmn:process id="nifiMigrationProcess" name="NiFi Dataflow Migration" isExecutable="true">
     <bpmn:startEvent id="StartEvent_Migration" name="Start">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="workspaceId" label="Workspace ID (optional)" type="string">
+            <camunda:properties>
+              <camunda:property id="camunda:optional" value="true" />
+            </camunda:properties>
+          </camunda:formField>
+          <camunda:formField id="dataflowId" label="Dataflow UUID (optional)" type="string">
+            <camunda:properties>
+              <camunda:property id="camunda:optional" value="true" />
+            </camunda:properties>
+          </camunda:formField>
+        </camunda:formData>
+      </bpmn:extensionElements>
       <bpmn:outgoing>Flow_Start_To_Migrate</bpmn:outgoing>
     </bpmn:startEvent>
-
-    <bpmn:serviceTask id="ServiceTask_Migrate" name="Run NiFi Migration"
-                      camunda:delegateExpression="${nifiDataflowMigrationDelegate}">
+    <bpmn:serviceTask id="ServiceTask_Migrate" name="Run NiFi Migration" camunda:delegateExpression="${nifiDataflowMigrationDelegate}">
       <bpmn:incoming>Flow_Start_To_Migrate</bpmn:incoming>
       <bpmn:outgoing>Flow_Migrate_To_End</bpmn:outgoing>
     </bpmn:serviceTask>
-
     <bpmn:endEvent id="EndEvent_Migration" name="Done">
       <bpmn:incoming>Flow_Migrate_To_End</bpmn:incoming>
     </bpmn:endEvent>
-
-    <bpmn:sequenceFlow id="Flow_Start_To_Migrate" sourceRef="StartEvent_Migration" targetRef="ServiceTask_Migrate"/>
-    <bpmn:sequenceFlow id="Flow_Migrate_To_End" sourceRef="ServiceTask_Migrate" targetRef="EndEvent_Migration"/>
+    <bpmn:sequenceFlow id="Flow_Start_To_Migrate" sourceRef="StartEvent_Migration" targetRef="ServiceTask_Migrate" />
+    <bpmn:sequenceFlow id="Flow_Migrate_To_End" sourceRef="ServiceTask_Migrate" targetRef="EndEvent_Migration" />
   </bpmn:process>
-
   <bpmndi:BPMNDiagram id="BPMNDiagram_NiFiMigration">
     <bpmndi:BPMNPlane id="BPMNPlane_NiFiMigration" bpmnElement="nifiMigrationProcess">
-      <bpmndi:BPMNShape id="StartEvent_Migration_di" bpmnElement="StartEvent_Migration">
-        <dc:Bounds x="180" y="102" width="36" height="36"/>
+      <bpmndi:BPMNShape id="EndEvent_Migration_di" bpmnElement="EndEvent_Migration">
+        <dc:Bounds x="1062" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1066" y="228" width="27" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ServiceTask_Migrate_di" bpmnElement="ServiceTask_Migrate">
-        <dc:Bounds x="270" y="80" width="160" height="80"/>
+        <dc:Bounds x="600" y="130" width="160" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_Migration_di" bpmnElement="EndEvent_Migration">
-        <dc:Bounds x="480" y="102" width="36" height="36"/>
+      <bpmndi:BPMNShape id="StartEvent_Migration_di" bpmnElement="StartEvent_Migration">
+        <dc:Bounds x="152" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="158" y="178" width="24" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_Start_To_Migrate_di" bpmnElement="Flow_Start_To_Migrate">
-        <di:waypoint x="216" y="120"/>
-        <di:waypoint x="270" y="120"/>
+        <di:waypoint x="188" y="160" />
+        <di:waypoint x="308" y="160" />
+        <di:waypoint x="308" y="170" />
+        <di:waypoint x="600" y="170" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_Migrate_To_End_di" bpmnElement="Flow_Migrate_To_End">
-        <di:waypoint x="430" y="120"/>
-        <di:waypoint x="480" y="120"/>
+        <di:waypoint x="680" y="130" />
+        <di:waypoint x="680" y="84" />
+        <di:waypoint x="1080" y="84" />
+        <di:waypoint x="1080" y="182" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

@@ -7,6 +7,20 @@
                   targetNamespace="http://emigran.com/camunda/nifi/test">
   <bpmn:process id="nifiMigrationTest" name="NiFi Migration Test" isExecutable="true">
     <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="workspaceId" label="Workspace ID (optional)" type="string">
+            <camunda:properties>
+              <camunda:property id="camunda:optional" value="true"/>
+            </camunda:properties>
+          </camunda:formField>
+          <camunda:formField id="dataflowId" label="Dataflow UUID (optional)" type="string">
+            <camunda:properties>
+              <camunda:property id="camunda:optional" value="true"/>
+            </camunda:properties>
+          </camunda:formField>
+        </camunda:formData>
+      </bpmn:extensionElements>
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:serviceTask id="ServiceTask_Migrate" name="Run NiFi Migration" camunda:delegateExpression="${nifiDataflowMigrationDelegate}">
