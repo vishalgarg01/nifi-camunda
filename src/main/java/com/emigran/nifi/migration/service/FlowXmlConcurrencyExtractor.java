@@ -66,15 +66,17 @@ public class FlowXmlConcurrencyExtractor {
      * @return list of processors with concurrency != 1; empty if group not found
      */
     public List<ProcessorConcurrencyInfo> getProcessorsWithConcurrencyNotOne(String oldDataflowUuid) {
+        log.info("[FlowXmlConcurrencyExtractor] getProcessorsWithConcurrencyNotOne START - oldDataflowUuid={}", oldDataflowUuid);
         List<ProcessorConcurrencyInfo> result = new ArrayList<>();
         Document doc = flowXmlFetcher.getFlowXml();
         Element dataflowGroup = findProcessGroupById(doc.getDocumentElement(), oldDataflowUuid);
         if (dataflowGroup == null) {
-            log.warn("Dataflow process group not found in flow.xml for uuid={}", oldDataflowUuid);
+            log.warn("[FlowXmlConcurrencyExtractor] Dataflow process group not found in flow.xml for uuid={}", oldDataflowUuid);
             return result;
         }
 
         NodeList processors = dataflowGroup.getElementsByTagName("processor");
+        log.debug("[FlowXmlConcurrencyExtractor] Scanning {} processor(s) in process group", processors.getLength());
         for (int i = 0; i < processors.getLength(); i++) {
             Node node = processors.item(i);
             if (!(node instanceof Element)) {
@@ -96,6 +98,7 @@ public class FlowXmlConcurrencyExtractor {
                     processorClass != null ? processorClass : "",
                     concurrency));
         }
+        log.info("[FlowXmlConcurrencyExtractor] getProcessorsWithConcurrencyNotOne END - found {} processor(s)", result.size());
         return result;
     }
 

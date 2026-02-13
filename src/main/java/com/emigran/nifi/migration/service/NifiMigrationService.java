@@ -70,16 +70,20 @@ public class NifiMigrationService {
      * @return path to the migration result log
      */
     public String migrateAll(String workspaceId, String dataflowId) {
+        log.info("[migrateAll] START - workspaceId={}, dataflowId={}", workspaceId, dataflowId);
         List<Workspace> workspaces = oldClient.getWorkspaces()
                 .stream()
                 .filter(Workspace::isEnabled)
                 .filter(ws -> matchesWorkspace(ws, workspaceId))
                 .collect(Collectors.toList());
+        log.info("[migrateAll] Found {} workspace(s) to migrate", workspaces.size());
         for (Workspace ws : workspaces) {
-            log.info("Migrating workspace: {} (id={})", ws.getName(), ws.getId());
+            log.info("[migrateAll] Migrating workspace: {} (id={})", ws.getName(), ws.getId());
             migrateWorkspace(ws, dataflowId);
         }
-        return resultLogger.getOutputPath();
+        String path = resultLogger.getOutputPath();
+        log.info("[migrateAll] END - result log at {}", path);
+        return path;
     }
 
     private static boolean matchesWorkspace(Workspace ws, String workspaceId) {
@@ -93,9 +97,11 @@ public class NifiMigrationService {
     }
 
     private void migrateWorkspace(Workspace workspace, String dataflowIdFilter) {
+        log.info("[migrateWorkspace] START - workspace={} (id={})", workspace.getName(), workspace.getId());
         WorkspaceCreateRequest createRequest = new WorkspaceCreateRequest(workspace.getName(), workspace.getOrganisations());
         Workspace newWorkspace;
         try {
+            log.info("[migrateWorkspace] Fetching/creating target workspace");
             List<Workspace> existing = newClient.getWorkspaces();
             newWorkspace = existing.stream()
                     .filter(ws -> ws.getName() != null && ws.getName().equalsIgnoreCase(workspace.getName()) && ws.isEnabled() )
@@ -103,26 +109,30 @@ public class NifiMigrationService {
                     .orElse(null);
 
             if (newWorkspace != null) {
-                log.info("Reusing existing workspace {} -> {}", workspace.getName(), newWorkspace.getId());
+                log.info("[migrateWorkspace] Reusing existing workspace {} -> {}", workspace.getName(), newWorkspace.getId());
             } else {
                 newWorkspace = newClient.createWorkspace(createRequest);
-                log.info("Created workspace {} -> {}", workspace.getName(),
+                log.info("[migrateWorkspace] Created workspace {} -> {}", workspace.getName(),
                         newWorkspace != null ? newWorkspace.getId() : null);
             }
         } catch (Exception ex) {
+            log.error("[migrateWorkspace] Failed creating/fetching workspace: {}", ex.getMessage());
             resultLogger.logFailure(workspace.getName(), null, "Failed creating/fetching workspace", ex);
             return;
         }
 
+        log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
         List<DataflowSummary> liveDataflows = oldClient.getDataflows(workspace.getId())
                 .stream()
                 .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
                 .filter(df -> matchesDataflow(df, dataflowIdFilter))
                 .collect(Collectors.toList());
+        log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", liveDataflows.size());
 
         for (DataflowSummary summary : liveDataflows) {
             migrateDataflow(workspace, newWorkspace, summary);
         }
+        log.info("[migrateWorkspace] END - workspace={}", workspace.getName());
     }
 
     private static boolean matchesDataflow(DataflowSummary df, String dataflowIdFilter) {
@@ -133,17 +143,23 @@ public class NifiMigrationService {
     }
 
     private void migrateDataflow(Workspace sourceWorkspace, Workspace targetWorkspace, DataflowSummary summary) {
+        log.info("[migrateDataflow] START - dataflow={} (uuid={})", summary.getName(), summary.getUuid());
         try {
+            log.info("[migrateDataflow] Fetching dataflow detail from old system");
             DataflowDetail detail = oldClient.getDataflowDetail(sourceWorkspace.getId(), summary.getUuid());
             if (detail == null) {
+                log.error("[migrateDataflow] Dataflow detail missing");
                 resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), "Dataflow detail missing", null);
                 return;
             }
+            log.info("[migrateDataflow] Resolving secrets");
             secretResolver.resolve(detail, sourceWorkspace.getName(), sourceWorkspace.getUuid(), summary.getUuid());
 
             TransformContext transformContext = null;
             DiyDataflowRequest diyRequest;
-            if (isTransformFlow(detail)) {
+            boolean isTransform = isTransformFlow(detail);
+            log.info("[migrateDataflow] isTransformFlow={}, building DIY request", isTransform);
+            if (isTransform) {
                 Block transformBlock = detail.getBlocks().stream()
                         .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
                         .findFirst()
@@ -167,10 +183,12 @@ public class NifiMigrationService {
                                 transformProps.getHeaderMappingJson());
                     }
                 } catch (Exception ex) {
+                    log.error("[migrateDataflow] Transform JSLT/group-by generation failed: {}", ex.getMessage());
                     resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(),
                             "Transform JSLT/group-by generation failed", ex);
                     return;
                 }
+                log.info("[migrateDataflow] Building DIY request for transform flow");
                 transformContext = new TransformContext(
                         recordGroupBySource,
                         jsltScript,
@@ -188,44 +206,56 @@ public class NifiMigrationService {
                 diyRequest = buildDiyRequest(detail);
             }
 
+            log.info("[migrateDataflow] Creating DIY dataflow on target");
             DataflowDetail created = newClient.createDiyDataflow(targetWorkspace.getId(), diyRequest);
             String targetUuid = created != null && created.getUuid() != null ? created.getUuid() : summary.getUuid();
+            log.info("[migrateDataflow] Created/found target uuid={}", targetUuid);
 
+            log.info("[migrateDataflow] Merging for update and applying transform context if any");
             DataflowDetail updatePayload = mergeForUpdate(created != null ? created : detail, detail);
             if (transformContext != null && updatePayload != null && updatePayload.getBlocks() != null) {
                 applyTransformContextToBlocks(updatePayload.getBlocks(), transformContext);
             }
 
+            log.info("[migrateDataflow] Updating dataflow on target");
             DataflowDetail updated = newClient.updateDataflow(targetWorkspace.getId(), targetUuid, updatePayload);
+
             Schedule sched = detail.getSchedule();
             if (sched != null) {
                 if (sched.getCron() == null && sched.getScheduleExpression() != null) {
                     sched.setCron(sched.getScheduleExpression());
                 }
                 if (sched.getCron() != null && !sched.getCron().trim().isEmpty()) {
+                    log.info("[migrateDataflow] Updating schedule");
                     newClient.updateSchedule(targetWorkspace.getId(), targetUuid, sched);
                 }
             }
 
+            log.info("[migrateDataflow] Updating processor concurrency from flow.xml");
             updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, targetUuid, updated);
 
+            log.info("[migrateDataflow] Checking post-update status");
             if (updated != null && updated.getStatus() != null) {
                 DataflowStatus st = updated.getStatus();
                 int disabled = st.getDisabledCount() == null ? 0 : st.getDisabledCount();
                 int invalid = st.getInvalidCount() == null ? 0 : st.getInvalidCount();
                 if (disabled > 0 || invalid > 0) {
+                    log.error("[migrateDataflow] Post-update status invalid: disabled={}, invalid={}", disabled, invalid);
                     resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(),
                             "Post-update status invalid/disabled counts > 0 (disabled=" + disabled + ", invalid=" + invalid + ")", null);
                     return;
                 }
             }
 
+            log.info("[migrateDataflow] SUCCESS - dataflow={} -> workspace {} uuid {}", summary.getName(), targetWorkspace.getId(), updated != null ? updated.getUuid() : targetUuid);
             resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(),
                     "Migrated to workspace " + targetWorkspace.getId() + " with uuid " +
                             (updated != null ? updated.getUuid() : targetUuid));
         } catch (Exception ex) {
+            log.error("[migrateDataflow] FAILED - dataflow={}: {}", summary.getName(), ex.getMessage(), ex);
             resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), "Migration failed", ex);
         }
+        log.info("[migrateDataflow] END - dataflow={}", summary.getName());
     }
 
     /**
@@ -236,10 +266,13 @@ public class NifiMigrationService {
      */
     private void updateProcessorConcurrencyFromFlowXml(String oldDataflowUuid, DataflowDetail oldDetail,
                                                        String newDataflowUuid, DataflowDetail newDataflow) {
+        log.info("[updateProcessorConcurrencyFromFlowXml] START - oldUuid={}, newUuid={}", oldDataflowUuid, newDataflowUuid);
         if (oldDetail == null || oldDetail.getBlocks() == null || newDataflow == null || newDataflow.getBlocks() == null) {
+            log.info("[updateProcessorConcurrencyFromFlowXml] Skipping - missing detail or blocks");
             return;
         }
         List<ProcessorConcurrencyInfo> toUpdate = flowXmlConcurrencyExtractor.getProcessorsWithConcurrencyNotOne(oldDataflowUuid);
+        log.info("[updateProcessorConcurrencyFromFlowXml] Found {} processor(s) with concurrency != 1", toUpdate.size());
         for (ProcessorConcurrencyInfo info : toUpdate) {
             Block oldBlock = findOldBlockForProcessor(oldDetail.getBlocks(), info.getProcessorName());
             if (oldBlock == null) {
@@ -268,9 +301,10 @@ public class NifiMigrationService {
                 log.info("Updated concurrency to {} for processor {} (old block {} -> new block {})",
                         info.getCurrentConcurrency(), info.getProcessorName(), oldBlock.getName(), newBlock.getName());
             } catch (Exception ex) {
-                log.warn("Failed to update concurrency for processor {} (block {}): {}", info.getProcessorName(), newBlock.getName(), ex.getMessage());
+                log.warn("[updateProcessorConcurrencyFromFlowXml] Failed to update concurrency for processor {} (block {}): {}", info.getProcessorName(), newBlock.getName(), ex.getMessage());
             }
         }
+        log.info("[updateProcessorConcurrencyFromFlowXml] END");
     }
 
     /**
@@ -322,6 +356,7 @@ public class NifiMigrationService {
      * transform get blockOrder increased by 2.
      */
     private DiyDataflowRequest buildDiyRequestForTransform(DataflowDetail detail, TransformContext transformContext) {
+        log.debug("[buildDiyRequestForTransform] Building DIY request with transform replacement blocks");
         List<Block> blocks = detail.getBlocks() == null ? Collections.emptyList() : detail.getBlocks();
         Block transformBlock = blocks.stream()
                 .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
@@ -360,6 +395,7 @@ public class NifiMigrationService {
     }
 
     private DiyDataflowRequest buildDiyRequest(DataflowDetail detail) {
+        log.debug("[buildDiyRequest] Building DIY request with {} blocks", detail.getBlocks() == null ? 0 : detail.getBlocks().size());
         List<DiyBlockRequest> mapped = detail.getBlocks() == null ? Collections.emptyList() :
                 detail.getBlocks().stream().map(this::toDiyBlock).collect(Collectors.toList());
         return new DiyDataflowRequest(detail.getName(), mapped);
@@ -375,6 +411,7 @@ public class NifiMigrationService {
     }
 
     private DataflowDetail mergeForUpdate(DataflowDetail created, DataflowDetail sourceDetail) {
+        log.debug("[mergeForUpdate] Merging created with source detail");
         // Start from created (has ids/blockTypeIds/field metadata) but override values from sourceDetail
         if (created == null || sourceDetail == null || sourceDetail.getBlocks() == null) {
             return sourceDetail != null ? sourceDetail : created;
@@ -464,6 +501,7 @@ public class NifiMigrationService {
         if (blocks == null || ctx == null) {
             return;
         }
+        log.debug("[applyTransformContextToBlocks] Applying transform context to {} blocks", blocks.size());
         for (Block block : blocks) {
             int id = block.getBlockTypeId();
             if (block.getFields() == null) {
