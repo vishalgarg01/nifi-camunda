@@ -1,5 +1,6 @@
 package com.emigran.workflow.delegates.nifi;
 
+import com.emigran.nifi.migration.service.MigrationResultLogger;
 import com.emigran.nifi.migration.service.NifiMigrationService;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
@@ -12,10 +13,13 @@ import org.springframework.stereotype.Component;
 public class NifiDataflowMigrationDelegate implements JavaDelegate {
     private static final Logger log = LoggerFactory.getLogger(NifiDataflowMigrationDelegate.class);
     private final NifiMigrationService migrationService;
+    private final MigrationResultLogger resultLogger;
 
     @Autowired
-    public NifiDataflowMigrationDelegate(NifiMigrationService migrationService) {
+    public NifiDataflowMigrationDelegate(NifiMigrationService migrationService,
+                                        MigrationResultLogger resultLogger) {
         this.migrationService = migrationService;
+        this.resultLogger = resultLogger;
     }
 
     @Override
@@ -30,8 +34,12 @@ public class NifiDataflowMigrationDelegate implements JavaDelegate {
         }
         log.info("[NifiDataflowMigrationDelegate] Calling migrationService.migrateAll");
         String logPath = migrationService.migrateAll(workspaceId, dataflowId);
+        String summaryPath = resultLogger.writeSummary();
+        boolean hasFailures = resultLogger.hasFailures();
         execution.setVariable("migrationLogPath", logPath);
-        log.info("[NifiDataflowMigrationDelegate] execute END - result log at {}", logPath);
+        execution.setVariable("migrationSummaryPath", summaryPath != null ? summaryPath : "");
+        execution.setVariable("migrationHasFailures", hasFailures);
+        log.info("[NifiDataflowMigrationDelegate] execute END - log={}, summary={}, hasFailures={}", logPath, summaryPath, hasFailures);
     }
 
     private static String getStringVariable(DelegateExecution execution, String name) {

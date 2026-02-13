@@ -52,7 +52,7 @@ nifi:
       remote-path: ${NIFI_MIGRATION_FLOW_XML_REMOTE_PATH:/Capillary testing/flow.xml/flow.xml}
       cache-dir: ${NIFI_MIGRATION_FLOW_XML_CACHE_DIR:./flow-cache}
       sensitive-key: ${NIFI_MIGRATION_FLOW_XML_SENSITIVE_KEY:}
-    log-dir: ${NIFI_MIGRATION_LOG_DIR:/tmp/nifi-migration-logs}
+    log-dir: ${NIFI_MIGRATION_LOG_DIR:./nifi-migration-logs}
     glue:
       block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://crm-nightly-new.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
     string:

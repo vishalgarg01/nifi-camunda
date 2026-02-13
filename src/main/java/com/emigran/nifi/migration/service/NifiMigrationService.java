@@ -71,6 +71,7 @@ public class NifiMigrationService {
      */
     public String migrateAll(String workspaceId, String dataflowId) {
         log.info("[migrateAll] START - workspaceId={}, dataflowId={}", workspaceId, dataflowId);
+        resultLogger.clear();
         List<Workspace> workspaces = oldClient.getWorkspaces()
                 .stream()
                 .filter(Workspace::isEnabled)
@@ -149,7 +150,7 @@ public class NifiMigrationService {
             DataflowDetail detail = oldClient.getDataflowDetail(sourceWorkspace.getId(), summary.getUuid());
             if (detail == null) {
                 log.error("[migrateDataflow] Dataflow detail missing");
-                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), "Dataflow detail missing", null);
+                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(), "Dataflow detail missing", null);
                 return;
             }
             log.info("[migrateDataflow] Resolving secrets");
@@ -184,7 +185,7 @@ public class NifiMigrationService {
                     }
                 } catch (Exception ex) {
                     log.error("[migrateDataflow] Transform JSLT/group-by generation failed: {}", ex.getMessage());
-                    resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(),
+                    resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
                             "Transform JSLT/group-by generation failed", ex);
                     return;
                 }
@@ -241,19 +242,19 @@ public class NifiMigrationService {
                 int invalid = st.getInvalidCount() == null ? 0 : st.getInvalidCount();
                 if (disabled > 0 || invalid > 0) {
                     log.error("[migrateDataflow] Post-update status invalid: disabled={}, invalid={}", disabled, invalid);
-                    resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(),
+                    resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
                             "Post-update status invalid/disabled counts > 0 (disabled=" + disabled + ", invalid=" + invalid + ")", null);
                     return;
                 }
             }
 
             log.info("[migrateDataflow] SUCCESS - dataflow={} -> workspace {} uuid {}", summary.getName(), targetWorkspace.getId(), updated != null ? updated.getUuid() : targetUuid);
-            resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(),
+            resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
                     "Migrated to workspace " + targetWorkspace.getId() + " with uuid " +
                             (updated != null ? updated.getUuid() : targetUuid));
         } catch (Exception ex) {
             log.error("[migrateDataflow] FAILED - dataflow={}: {}", summary.getName(), ex.getMessage(), ex);
-            resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), "Migration failed", ex);
+            resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(), "Migration failed", ex);
         }
         log.info("[migrateDataflow] END - dataflow={}", summary.getName());
     }

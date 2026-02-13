@@ -4,6 +4,7 @@
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
                   xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   targetNamespace="http://emigran.com/camunda/nifi/test">
   <bpmn:process id="nifiMigrationTest" name="NiFi Migration Test" isExecutable="true">
     <bpmn:startEvent id="StartEvent_1" name="Start">
@@ -25,13 +26,27 @@
     </bpmn:startEvent>
     <bpmn:serviceTask id="ServiceTask_Migrate" name="Run NiFi Migration" camunda:delegateExpression="${nifiDataflowMigrationDelegate}">
       <bpmn:incoming>Flow_1</bpmn:incoming>
-      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:outgoing>Flow_To_Gateway</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:endEvent id="EndEvent_1" name="Done">
-      <bpmn:incoming>Flow_2</bpmn:incoming>
+    <bpmn:exclusiveGateway id="Gateway_Result" name="Migration result">
+      <bpmn:incoming>Flow_To_Gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_To_Success</bpmn:outgoing>
+      <bpmn:outgoing>Flow_To_Failure</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_Success" name="Success">
+      <bpmn:incoming>Flow_To_Success</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Failure" name="Failure">
+      <bpmn:incoming>Flow_To_Failure</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_Migrate"/>
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_Migrate" targetRef="EndEvent_1"/>
+    <bpmn:sequenceFlow id="Flow_To_Gateway" sourceRef="ServiceTask_Migrate" targetRef="Gateway_Result"/>
+    <bpmn:sequenceFlow id="Flow_To_Success" name="No failures" sourceRef="Gateway_Result" targetRef="EndEvent_Success">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!migrationHasFailures}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_To_Failure" name="Has failures" sourceRef="Gateway_Result" targetRef="EndEvent_Failure">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${migrationHasFailures}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="nifiMigrationTest">
@@ -41,16 +56,32 @@
       <bpmndi:BPMNShape id="ServiceTask_Migrate_di" bpmnElement="ServiceTask_Migrate">
         <dc:Bounds x="270" y="80" width="140" height="80"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
-        <dc:Bounds x="470" y="102" width="36" height="36"/>
+      <bpmndi:BPMNShape id="Gateway_Result_di" bpmnElement="Gateway_Result">
+        <dc:Bounds x="435" y="95" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="562" y="102" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Failure_di" bpmnElement="EndEvent_Failure">
+        <dc:Bounds x="562" y="182" width="36" height="36"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
         <di:waypoint x="208" y="120"/>
         <di:waypoint x="270" y="120"/>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+      <bpmndi:BPMNEdge id="Flow_To_Gateway_di" bpmnElement="Flow_To_Gateway">
         <di:waypoint x="410" y="120"/>
-        <di:waypoint x="470" y="120"/>
+        <di:waypoint x="435" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_To_Success_di" bpmnElement="Flow_To_Success">
+        <di:waypoint x="460" y="95"/>
+        <di:waypoint x="460" y="120"/>
+        <di:waypoint x="562" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_To_Failure_di" bpmnElement="Flow_To_Failure">
+        <di:waypoint x="460" y="145"/>
+        <di:waypoint x="460" y="200"/>
+        <di:waypoint x="562" y="200"/>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" targetNamespace="http://emigran.com/camunda/nifi" exporter="Camunda Modeler" exporterVersion="5.41.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" targetNamespace="http://emigran.com/camunda/nifi" exporter="Camunda Modeler" exporterVersion="5.41.0">
   <bpmn:process id="nifiMigrationProcess" name="NiFi Dataflow Migration" isExecutable="true">
     <bpmn:startEvent id="StartEvent_Migration" name="Start">
       <bpmn:extensionElements>
@@ -20,29 +20,55 @@
     </bpmn:startEvent>
     <bpmn:serviceTask id="ServiceTask_Migrate" name="Run NiFi Migration" camunda:delegateExpression="${nifiDataflowMigrationDelegate}">
       <bpmn:incoming>Flow_Start_To_Migrate</bpmn:incoming>
-      <bpmn:outgoing>Flow_Migrate_To_End</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Migrate_To_Gateway</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:endEvent id="EndEvent_Migration" name="Done">
-      <bpmn:incoming>Flow_Migrate_To_End</bpmn:incoming>
+    <bpmn:exclusiveGateway id="Gateway_MigrationResult" name="Migration result">
+      <bpmn:incoming>Flow_Migrate_To_Gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Gateway_To_Success</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Gateway_To_Failure</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_Success" name="Success">
+      <bpmn:incoming>Flow_Gateway_To_Success</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Failure" name="Failure">
+      <bpmn:incoming>Flow_Gateway_To_Failure</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_Start_To_Migrate" sourceRef="StartEvent_Migration" targetRef="ServiceTask_Migrate" />
-    <bpmn:sequenceFlow id="Flow_Migrate_To_End" sourceRef="ServiceTask_Migrate" targetRef="EndEvent_Migration" />
+    <bpmn:sequenceFlow id="Flow_Migrate_To_Gateway" sourceRef="ServiceTask_Migrate" targetRef="Gateway_MigrationResult" />
+    <bpmn:sequenceFlow id="Flow_Gateway_To_Success" name="No failures" sourceRef="Gateway_MigrationResult" targetRef="EndEvent_Success">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!migrationHasFailures}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Gateway_To_Failure" name="Has failures" sourceRef="Gateway_MigrationResult" targetRef="EndEvent_Failure">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${migrationHasFailures}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_NiFiMigration">
     <bpmndi:BPMNPlane id="BPMNPlane_NiFiMigration" bpmnElement="nifiMigrationProcess">
-      <bpmndi:BPMNShape id="EndEvent_Migration_di" bpmnElement="EndEvent_Migration">
-        <dc:Bounds x="1062" y="182" width="36" height="36" />
+      <bpmndi:BPMNShape id="StartEvent_Migration_di" bpmnElement="StartEvent_Migration">
+        <dc:Bounds x="152" y="142" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1066" y="228" width="27" height="14" />
+          <dc:Bounds x="158" y="178" width="24" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ServiceTask_Migrate_di" bpmnElement="ServiceTask_Migrate">
         <dc:Bounds x="600" y="130" width="160" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="StartEvent_Migration_di" bpmnElement="StartEvent_Migration">
-        <dc:Bounds x="152" y="142" width="36" height="36" />
+      <bpmndi:BPMNShape id="Gateway_MigrationResult_di" bpmnElement="Gateway_MigrationResult" isMarkerVisible="true">
+        <dc:Bounds x="835" y="155" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="158" y="178" width="24" height="14" />
+          <dc:Bounds x="822" y="131" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1082" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1079" y="165" width="42" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Failure_di" bpmnElement="EndEvent_Failure">
+        <dc:Bounds x="1122" y="292" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1124" y="335" width="34" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_Start_To_Migrate_di" bpmnElement="Flow_Start_To_Migrate">
@@ -51,11 +77,25 @@
         <di:waypoint x="308" y="170" />
         <di:waypoint x="600" y="170" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_Migrate_To_End_di" bpmnElement="Flow_Migrate_To_End">
-        <di:waypoint x="680" y="130" />
-        <di:waypoint x="680" y="84" />
-        <di:waypoint x="1080" y="84" />
-        <di:waypoint x="1080" y="182" />
+      <bpmndi:BPMNEdge id="Flow_Migrate_To_Gateway_di" bpmnElement="Flow_Migrate_To_Gateway">
+        <di:waypoint x="760" y="170" />
+        <di:waypoint x="835" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Gateway_To_Success_di" bpmnElement="Flow_Gateway_To_Success">
+        <di:waypoint x="885" y="180" />
+        <di:waypoint x="885" y="140" />
+        <di:waypoint x="1082" y="140" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="840" y="153" width="53" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Gateway_To_Failure_di" bpmnElement="Flow_Gateway_To_Failure">
+        <di:waypoint x="860" y="205" />
+        <di:waypoint x="860" y="242" />
+        <di:waypoint x="1123" y="306" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="846" y="214" width="59" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
