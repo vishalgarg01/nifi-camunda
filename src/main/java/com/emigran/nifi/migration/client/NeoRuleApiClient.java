@@ -148,10 +148,11 @@ public class NeoRuleApiClient {
             ResponseEntity<PostHookResponse> response = restTemplate.exchange(
                     uri, HttpMethod.POST, entity, PostHookResponse.class);
             PostHookResponse resp = response.getBody();
-            if (resp != null && Boolean.TRUE.equals(resp.getSuccess())) {
+            if (resp != null && Boolean.TRUE.equals(resp.getSuccess()) && resp.getResult().getIsSuccess()) {
                 log.info("[NeoRuleApi] Post-hook success for dataflow {}", dataflowId);
             } else {
-                log.warn("[NeoRuleApi] Post-hook response: {}", resp);
+                log.error("[NeoRuleApi] Post-hook response: {}", resp != null ? resp.getResult().getMessage() : null);
+                throw new RuntimeException(resp != null ? resp.getResult().getMessage() : "dataflow creation failed at nifi");
             }
         } catch (Exception ex) {
             log.error("[NeoRuleApi] Post-hook failed: {}", ex.getMessage(), ex);

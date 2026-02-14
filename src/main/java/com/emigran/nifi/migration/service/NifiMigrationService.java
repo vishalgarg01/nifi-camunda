@@ -12,7 +12,6 @@ import com.emigran.nifi.migration.model.Field;
 import com.emigran.nifi.migration.model.TransformFlowProperties;
 import com.emigran.nifi.migration.model.Workspace;
 import com.emigran.nifi.migration.model.WorkspaceCreateRequest;
-import com.emigran.nifi.migration.model.Connection;
 import com.emigran.nifi.migration.model.ProcessorConcurrencyRequest;
 import com.emigran.nifi.migration.model.Schedule;
 import com.emigran.nifi.migration.model.neo.BlockPosition;
@@ -443,14 +442,10 @@ public class NifiMigrationService {
         }
         ordered.sort((a, b) -> Integer.compare(a.order, b.order));
 
-        Map<Integer, String> orderToName = new HashMap<>();
-        for (BlockOrderEntry e : ordered) {
-            orderToName.put(e.order, e.name);
-        }
-
         List<NeoBlock> out = new ArrayList<>();
         int positionX = 0;
-        for (BlockOrderEntry e : ordered) {
+        for (int i = 0; i < ordered.size(); i++) {
+            BlockOrderEntry e = ordered.get(i);
             NeoBlock neo = new NeoBlock();
             neo.setName(e.name);
             neo.setType(e.newType);
@@ -469,26 +464,22 @@ public class NifiMigrationService {
             Map<String, String> varMap = buildVariableConfigKeyMap(config, e.oldBlock.getFields());
             neo.setVariableConfigKeyMap(varMap != null && !varMap.isEmpty() ? varMap : Collections.emptyMap());
 
+            // Relations: sequential order (block i -> block i+1). Explicit chain for transform: csv -> jslt -> jolt -> next
             List<BlockRelation> relations = new ArrayList<>();
-            // For transform expansion: csv->jslt, jslt->jolt; only jolt gets original transform block's connections
+            String relationTo = null;
             if ("csv".equals(e.transformPart) && transformBlock != null) {
-                relations.add(new BlockRelation("rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10), "isSuccess()", Collections.emptyList(), baseName + "-jslt"));
+                relationTo = baseName + "-jslt";
             } else if ("jslt".equals(e.transformPart)) {
-                relations.add(new BlockRelation("rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10), "isSuccess()", Collections.emptyList(), baseName + "-jolt"));
-            } else if (e.oldBlock.getConnections() != null) {
-                for (Connection c : e.oldBlock.getConnections()) {
-                    int targetOrder = c.getBlockId();
-                    if (e.transformPart != null && targetOrder == transformOrder) continue;
-                    if (transformOrder >= 0 && targetOrder > transformOrder) targetOrder = targetOrder + 2;
-                    String toName = orderToName.get(targetOrder);
-                    if (toName != null) {
-                        relations.add(new BlockRelation(
-                                "rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10),
-                                "isSuccess()",
-                                Collections.emptyList(),
-                                toName));
-                    }
-                }
+                relationTo = baseName + "-jolt";
+            } else if (i < ordered.size() - 1) {
+                relationTo = ordered.get(i + 1).name;
+            }
+            if (relationTo != null) {
+                relations.add(new BlockRelation(
+                        "rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10),
+                        "isSuccess()",
+                        Collections.emptyList(),
+                        relationTo));
             }
             neo.setRelations(relations);
             out.add(neo);
