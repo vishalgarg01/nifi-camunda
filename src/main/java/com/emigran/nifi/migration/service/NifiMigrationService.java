@@ -84,13 +84,30 @@ public class NifiMigrationService {
     public String migrateAll(String workspaceId, String dataflowId) {
         log.info("[migrateAll] START - workspaceId={}, dataflowId={}", workspaceId, dataflowId);
         resultLogger.clear();
-        List<Workspace> workspaces = oldClient.getWorkspaces()
-                .stream()
-                .filter(Workspace::isEnabled)
-                .filter(ws -> matchesWorkspace(ws, workspaceId))
-                .collect(Collectors.toList());
+        List<Workspace> workspaces;
+        if (workspaceId != null && !workspaceId.trim().isEmpty()) {
+            Workspace single = oldClient.getWorkspace(workspaceId.trim());
+            workspaces = single != null ? Collections.singletonList(single) : Collections.emptyList();
+            if (workspaces.isEmpty()) {
+                log.warn("[migrateAll] Workspace not found for id={}, falling back to list and filter", workspaceId);
+                workspaces = oldClient.getWorkspaces()
+                        .stream()
+                        .filter(Workspace::isEnabled)
+                        .filter(ws -> matchesWorkspace(ws, workspaceId))
+                        .collect(Collectors.toList());
+            }
+        } else {
+            workspaces = oldClient.getWorkspaces()
+                    .stream()
+                    .filter(Workspace::isEnabled)
+                    .collect(Collectors.toList());
+        }
         log.info("[migrateAll] Found {} workspace(s) to migrate", workspaces.size());
         for (Workspace ws : workspaces) {
+            if (!ws.isEnabled()) {
+                log.warn("[migrateAll] Skipping disabled workspace: {} (id={})", ws.getName(), ws.getId());
+                continue;
+            }
             log.info("[migrateAll] Migrating workspace: {} (id={})", ws.getName(), ws.getId());
             migrateWorkspace(ws, dataflowId);
         }
@@ -111,39 +128,27 @@ public class NifiMigrationService {
 
     private void migrateWorkspace(Workspace workspace, String dataflowIdFilter) {
         log.info("[migrateWorkspace] START - workspace={} (id={})", workspace.getName(), workspace.getId());
-        WorkspaceCreateRequest createRequest = new WorkspaceCreateRequest(workspace.getName(), workspace.getOrganisations());
-        Workspace newWorkspace;
-        try {
-            log.info("[migrateWorkspace] Fetching/creating target workspace");
-            List<Workspace> existing = newClient.getWorkspaces();
-            newWorkspace = existing.stream()
-                    .filter(ws -> ws.getName() != null && ws.getName().equalsIgnoreCase(workspace.getName()) && ws.isEnabled() )
-                    .findFirst()
-                    .orElse(null);
 
-            if (newWorkspace != null) {
-                log.info("[migrateWorkspace] Reusing existing workspace {} -> {}", workspace.getName(), newWorkspace.getId());
+        List<DataflowSummary> liveDataflows;
+        if (dataflowIdFilter != null && !dataflowIdFilter.trim().isEmpty()) {
+            DataflowDetail single = oldClient.getDataflowDetail(workspace.getId(), dataflowIdFilter.trim());
+            if (single == null) {
+                log.warn("[migrateWorkspace] Dataflow not found: workspaceId={}, dataflowUuid={}", workspace.getId(), dataflowIdFilter);
+                liveDataflows = Collections.emptyList();
             } else {
-                newWorkspace = newClient.createWorkspace(createRequest);
-                log.info("[migrateWorkspace] Created workspace {} -> {}", workspace.getName(),
-                        newWorkspace != null ? newWorkspace.getId() : null);
+                liveDataflows = Collections.singletonList(single);
             }
-        } catch (Exception ex) {
-            log.error("[migrateWorkspace] Failed creating/fetching workspace: {}", ex.getMessage());
-            resultLogger.logFailure(workspace.getName(), null, "Failed creating/fetching workspace", ex);
-            return;
+        } else {
+            log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
+            liveDataflows = oldClient.getDataflows(workspace.getId())
+                    .stream()
+                    .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
+                    .collect(Collectors.toList());
         }
-
-        log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
-        List<DataflowSummary> liveDataflows = oldClient.getDataflows(workspace.getId())
-                .stream()
-                .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
-                .filter(df -> matchesDataflow(df, dataflowIdFilter))
-                .collect(Collectors.toList());
         log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", liveDataflows.size());
 
         for (DataflowSummary summary : liveDataflows) {
-            migrateDataflow(workspace, newWorkspace, summary);
+            migrateDataflow(workspace, summary);
         }
         log.info("[migrateWorkspace] END - workspace={}", workspace.getName());
     }
@@ -155,7 +160,7 @@ public class NifiMigrationService {
         return df.getUuid() != null && dataflowIdFilter.trim().equalsIgnoreCase(df.getUuid());
     }
 
-    private void migrateDataflow(Workspace sourceWorkspace, Workspace targetWorkspace, DataflowSummary summary) {
+    private void migrateDataflow(Workspace sourceWorkspace, DataflowSummary summary) {
         log.info("[migrateDataflow] START - dataflow={} (uuid={})", summary.getName(), summary.getUuid());
         try {
             log.info("[migrateDataflow] Fetching dataflow detail from old system");

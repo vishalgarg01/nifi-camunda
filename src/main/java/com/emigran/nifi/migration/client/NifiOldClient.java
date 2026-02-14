@@ -30,6 +30,17 @@ public class NifiOldClient {
         return body == null ? Collections.emptyList() : Arrays.asList(body);
     }
 
+    /**
+     * Fetch a single workspace by id. Use when user provides workspaceId to avoid listing all workspaces.
+     */
+    public Workspace getWorkspace(String workspaceId) {
+        if (workspaceId == null || workspaceId.trim().isEmpty()) {
+            return null;
+        }
+        ResponseEntity<Workspace> response = client.get("/workspaces/" + workspaceId.trim(), false, Workspace.class);
+        return response.getBody();
+    }
+
     public List<DataflowSummary> getDataflows(Long workspaceId) {
         ResponseEntity<DataflowSummary[]> response = client.get("/workspaces/" + workspaceId + "/dataflows", false,
                 DataflowSummary[].class);
@@ -39,7 +50,7 @@ public class NifiOldClient {
 
     public DataflowDetail getDataflowDetail(Long workspaceId, String uuid) {
         ResponseEntity<DataflowDetail> response = client.get(
-                "/workspaces/" + workspaceId + "/dataflows/" + uuid,false, DataflowDetail.class);
+                "/workspaces/" + workspaceId + "/dataflows/" + uuid, false, DataflowDetail.class);
         return response.getBody();
     }
 }
