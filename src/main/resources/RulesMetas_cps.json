@@ -1,0 +1,2167 @@
+[{
+  "_id": {
+    "$oid": "697a05726c43834534fb7f43"
+  },
+  "id": "sftp_read",
+  "context": "connectplus",
+  "class": "source",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "download",
+    "iconBackgroundColor": "#2563EB",
+    "type": "sftp",
+    "label": "SFTP Read",
+    "tooltipText": "Poll SFTP server, download files by regex, validate, move them"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "hostname": {
+        "type": "string",
+        "title": "Hostname",
+        "description": "SFTP hostname",
+        "minLength": 5,
+        "maxLength": 100,
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "username": {
+        "type": "string",
+        "title": "Username",
+        "description": "SFTP username",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "password": {
+        "type": "string",
+        "title": "Password",
+        "description": "SFTP password",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "sourceDirectory": {
+        "type": "string",
+        "title": "Source Directory",
+        "description": "Remote source directory to read from",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "fileRegex": {
+        "type": "string",
+        "title": "Filename Pattern",
+        "description": "Regex used to match remote files",
+        "enum": [
+          ".*.csv",
+          ".*"
+        ],
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "processedDirectory": {
+        "type": "string",
+        "title": "Processed Directory",
+        "description": "Remote directory to move processed files to",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "unzipFiles": {
+        "type": "boolean",
+        "title": "Unzip Files",
+        "description": "If true, unzip incoming files before validation"
+      },
+      "apiErrorFilePath": {
+        "type": "string",
+        "title": "API Error Filepath",
+        "description": "Remote path used by PutSFTP for API error files",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "searchDirRecursively": {
+        "type": "boolean",
+        "title": "Search Directory Recursively",
+        "description": "Search nested folders when listing files"
+      },
+      "port": {
+        "type": "number",
+        "title": "Port",
+        "description": "SFTP port",
+        "default": 22
+      },
+      "fileDelimiter": {
+        "type": "string",
+        "title": "File Delimiter",
+        "description": "Delimiter for file validation",
+        "default": ","
+      },
+      "reportStatusCode": {
+        "type": "string",
+        "title": "Report Status Code",
+        "description": "Status codes required in error file",
+        "enum": [
+          "all",
+          "success",
+          "failure"
+        ],
+        "default": "all",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "privateKeyPath": {
+        "type": "string",
+        "title": "Private key path",
+        "description": "Optional private key path for SFTP auth",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "privateKeyPassphrase": {
+        "type": "string",
+        "title": "Key passphrase",
+        "description": "Optional private key passphrase",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      }
+    },
+    "required": [
+      "hostname",
+      "username",
+      "password",
+      "sourceDirectory",
+      "fileRegex",
+      "processedDirectory",
+      "port",
+      "fileDelimiter",
+      "reportStatusCode"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "697a05726c43834534fb7f44"
+  },
+  "id": "convert_csv_to_json",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "copy",
+    "iconBackgroundColor": "#7C3AED", 
+    "type": "transform", 
+    "label": "Convert CSV to JSON",
+    "tooltipText": "CSV \u2192 JSON transformer with optional sorting/grouping" 
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "fileType": {
+        "type": "string",
+        "title": "File Type (Record Reader Controller Service)",
+        "description": "Record reader controller service id to parse CSV",
+        "oneOf": [
+          { "const": "5c5b9607-0173-1000-87ad-a0b9ca44885f", "title": "csv" }
+        ],
+        "default": "5c5b9607-0173-1000-87ad-a0b9ca44885f",
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      },
+      "sortHeaders": {
+        "type": "string",
+        "title": "Sort Headers",
+        "description": "Comma separated header order"
+      },
+      "alphabeticalSort": {
+        "type": "boolean",
+        "title": "Alphabetical sort?",
+        "description": "If true, headers are sorted alphabetically",
+        "default": false
+      },
+      "groupSize": {
+        "type": "number",
+        "title": "Grouping Limit",
+        "description": "Maximum records per group (1-1000)",
+        "default": 1
+      },
+      "groupBy": {
+        "type": "string",
+        "title": "Group By",
+        "description": "Fields to group by (comma separated)"
+      },
+      "attribution_type": {
+        "type": "string",
+        "title": "attribution type"
+      },
+      "attribution_code": {
+        "type": "string",
+        "title": "attribution code"
+      },
+      "header_value": {
+        "type": "string",
+        "title": "header value to pass"
+      },
+      "child_till_code": {
+        "type": "string",
+        "title": "child org till"
+      },
+      "child_org_id": {
+        "type": "string",
+        "title": "child org Id"
+      }
+    },
+    "required": [
+      "fileType",
+      "alphabeticalSort",
+      "groupSize"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "697a05726c43834534fb7f45"
+  },
+  "id": "neo_block",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "Api",
+    "iconBackgroundColor": "#0EA5E9",
+    "type": "neo",
+    "label": "Neo Block",
+    "tooltipText": "Call Neo API, optionally split response, push to Kafka"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "neoDataFlows": {
+        "type": "string",
+        "title": "Neo Data Flows URL",
+        "description": "Neo data flow URL to invoke",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "splitResponse": {
+        "type": "string",
+        "title": "Split Response",
+        "description": "Whether to split the response JSON",
+        "enum": ["true", "false"],
+        "default": "false",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "authorization": {
+        "type": "string",
+        "title": "Authorization",
+        "description": "Authorization header",
+        "default": "Basic ${ten:append('product_sdk_user@capillarytech.com'):base64Encode()}"
+      },
+      "Max Retry": {
+        "type": "string",
+        "title": "Max Retry",
+        "description": "Maximum retry attempts",
+        "default": "10"
+      },
+      "Extra Retry Error Codes": {
+        "type": "string",
+        "title": "Extra Retry Error Codes",
+        "description": "HTTP codes that must retry",
+        "default": "429"
+      },
+      "Extra No Retry Error Codes": {
+        "type": "string",
+        "title": "Extra No Retry Error Codes",
+        "description": "HTTP codes that must NOT retry",
+        "default": "400"
+      }
+    },
+    "required": [
+      "neoDataFlows",
+      "authorization"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "697a05726c43834534fb7f46"
+  },
+  "id": "http_write",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "Api",
+    "iconBackgroundColor": "#F97316",
+    "type": "api",
+    "label": "HTTP Write",
+    "tooltipText": "OAuth-based API calls with rate limiting and retries"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "clientKey": {
+        "type": "string",
+        "title": "Client Key",
+        "description": "OAuth client key",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "clientSecret": {
+        "type": "string",
+        "title": "Client Secret",
+        "description": "OAuth client secret",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "apiEndPoint": {
+        "type": "string",
+        "title": "API Endpoint",
+        "description": "Relative endpoint path",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "apiBaseUrl": {
+        "type": "string",
+        "title": "API Base URL",
+        "description": "Base URL for the API",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "apiMethod": {
+        "type": "string",
+        "title": "API Method",
+        "description": "HTTP method",
+        "enum": [
+          "POST",
+          "PUT"
+        ],
+        "default": "POST",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "oAuthBaseUrl": {
+        "type": "string",
+        "title": "OAuth Base URL",
+        "description": "Base URL for OAuth token",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "bulkSupport": {
+        "type": "string",
+        "title": "Bulk Support",
+        "description": "Bulk support flag/value"
+      },
+      "requestSplitPath": {
+        "type": "string",
+        "title": "Request Split Path",
+        "description": "JSONPath to split outgoing requests",
+        "default": "$"
+      },
+      "responseSplitPath": {
+        "type": "string",
+        "title": "Response Split Path",
+        "description": "JSONPath to split responses",
+        "default": "$"
+      },
+      "recoverableErrorCodes": {
+        "type": "string",
+        "title": "Recoverable Error Codes",
+        "description": "Comma separated recoverable HTTP status codes",
+        "default": "521,502,503,504"
+      },
+      "parsePathMap": {
+        "type": "string",
+        "title": "Parse Path Map",
+        "description": "JSONPath map for parsing responses",
+        "default": "{\"status_code\":\"$.['errors'].*.code\",\"error_message\":\"$.['errors'].*.message\",\"entity_id\":\"$.Id\"}"
+      },
+      "yieldingErrorCodes": {
+        "type": "string",
+        "title": "Yielding Error Codes",
+        "description": "Comma separated yielding HTTP status codes",
+        "default": "429"
+      },
+      "maxRetries": {
+        "type": "string",
+        "title": "Max Retries",
+        "description": "Maximum retry attempts",
+        "default": "3"
+      },
+      "additionalHeaders": {
+        "type": "string",
+        "title": "Additional Headers",
+        "description": "Additional headers JSON"
+      },
+      "rate": {
+        "type": "string",
+        "title": "Rate",
+        "description": "Number of flow files",
+        "default": "1000"
+      },
+      "period": {
+        "type": "string",
+        "title": "Time Period",
+        "description": "Time duration",
+        "default": "1"
+      },
+      "timeUnit": {
+        "type": "string",
+        "title": "Time Unit",
+        "description": "Time unit for period",
+        "enum": [
+          "SECONDS",
+          "MINUTES",
+          "HOURS"
+        ],
+        "default": "MINUTES",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      }
+    },
+    "required": [
+      "clientKey",
+      "clientSecret",
+      "apiEndPoint",
+      "apiBaseUrl",
+      "apiMethod",
+      "oAuthBaseUrl",
+      "bulkSupport",
+      "requestSplitPath",
+      "responseSplitPath",
+      "parsePathMap",
+      "rate",
+      "period",
+      "timeUnit"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d85"
+  },
+  "id": "decrypt_content",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "restore",
+    "iconBackgroundColor": "#10B981",
+    "type": "decrypt",
+    "label": "Decrypt Content",
+    "tooltipText": "Decryption block for secure content"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "encryptAlgo": {
+        "type": "string",
+        "title": "Encryption Algorithm",
+        "enum": [
+          "PGP"
+        ],
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "privatekeyFile": {
+        "type": "string",
+        "title": "Private Key File"
+      },
+      "privatePassphrase": {
+        "type": "string",
+        "title": "Private Passphrase"
+      },
+      "isEnabled": {
+        "type": "string",
+        "title": "Is Enabled",
+        "enum": [
+          "true",
+          "false"
+        ],
+        "default": "true",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      }
+    },
+    "required": [
+      "encryptAlgo",
+      "privatekeyFile",
+      "privatePassphrase",
+      "isEnabled"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d86"
+  },
+  "id": "ok_file_3",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "check-filled",
+    "iconBackgroundColor": "#22C55E",
+    "type": "file",
+    "label": "Ok File",
+    "tooltipText": "Ok File processor"
+  },
+  "config": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d87"
+  },
+  "id": "filter_on_condition_hidden",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "filter",
+    "iconBackgroundColor": "#8B5CF6",
+    "type": "filter",
+    "label": "Filter On Condition Hidden",
+    "tooltipText": "Filters data based on condition hidden"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "filterCondition": {
+        "type": "string",
+        "title": "Filter Condition",
+        "default": "${header_value:equals('true'):or(${header_value:isEmpty()})}",
+        "minLength": 5
+      }
+    },
+    "required": [
+      "filterCondition"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d88"
+  },
+  "id": "sftp_write",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "upload",
+    "iconBackgroundColor": "#2563EB",
+    "type": "sftp",
+    "label": "SFTP Write",
+    "tooltipText": "Push files to SFTP server with optional file compression"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "hostname": {
+        "type": "string",
+        "title": "Hostname",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "username": {
+        "type": "string",
+        "title": "Username",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "password": {
+        "type": "string",
+        "title": "Password",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "remotePath": {
+        "type": "string",
+        "title": "Remote Path",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "createRemoteDirectory": {
+        "type": "boolean",
+        "title": "Create Remote Directory"
+      },
+      "conflictResolution": {
+        "type": "string",
+        "title": "Conflict Resolution",
+        "enum": [
+          "NONE",
+          "REPLACE",
+          "RENAME",
+          "IGNORE",
+          "FAIL"
+        ],
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "zipFiles": {
+        "type": "boolean",
+        "title": "Zip Files"
+      },
+      "port": {
+        "type": "number",
+        "title": "Port",
+        "default": 22
+      },
+      "outputFileName": {
+        "type": "string",
+        "title": "Output File Name",
+        "default": "${filename}"
+      },
+      "privateKeyPath": {
+        "type": "string",
+        "title": "Private key"
+      },
+      "privateKeyPassphrase": {
+        "type": "string",
+        "title": "Key passphrase"
+      }
+    },
+    "required": [
+      "hostname",
+      "username",
+      "password",
+      "remotePath",
+      "conflictResolution",
+      "port"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d89"
+  },
+  "id": "encrypt_content",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "rbac-lock",
+    "iconBackgroundColor": "#EF4444",
+    "type": "encrypt",
+    "label": "Encrypt Content",
+    "tooltipText": "Encryption block"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "encryptAlgo": {
+        "type": "string",
+        "title": "Encryption Algorithm",
+        "enum": [
+          "PGP"
+        ],
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "publicKeyFile": {
+        "type": "string",
+        "title": "Public Key File"
+      },
+      "publicKeyUserId": {
+        "type": "string",
+        "title": "Public Key User Id"
+      },
+      "isEnabled": {
+        "type": "string",
+        "title": "Is Enabled",
+        "enum": [
+          "true",
+          "false"
+        ],
+        "default": "true",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      }
+    },
+    "required": [
+      "encryptAlgo",
+      "publicKeyFile",
+      "publicKeyUserId",
+      "isEnabled"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d8a"
+  },
+  "id": "databricks_validation",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "data",
+    "iconBackgroundColor": "#E62E71",
+    "type": "validation",
+    "label": "Databricks Validation",
+    "tooltipText": "Data validation block that optionally triggers a Databricks job and uploads data to S3."
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "jobId": {
+        "type": "string",
+        "title": "DataBricks JobId",
+        "default": ""
+      },
+      "isEnabled": {
+        "type": "boolean",
+        "title": "Is Data Validation enabled?",
+        "default": false
+      }
+    },
+    "required": [
+      "isEnabled"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d8b"
+  },
+  "id": "hash_csv_columns",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "compare",
+    "iconBackgroundColor": "#6366F1",
+    "type": "transform",
+    "label": "Hash CSV Columns",
+    "tooltipText": "Hash csv data cell by cell using the specified hashing algorithms"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "Enabled": {
+        "type": "string",
+        "title": "Enabled",
+        "enum": [
+          "true",
+          "false"
+        ],
+        "default": "false",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "HashingAlgorithm": {
+        "type": "string",
+        "title": "Hashing Algorithm",
+        "enum": [
+          "SHA-256",
+          "SHA-512",
+          "MD5",
+          "SHA-1",
+          "RIPEMD-160"
+        ],
+        "default": "SHA-256",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "HeadersToBeHashed": {
+        "type": "string",
+        "title": "HeadersToBeHashed",
+        "description": "Headers needs to be hashed"
+      },
+      "Delimiter": {
+        "type": "string",
+        "title": "Delimiter",
+        "default": ","
+      }
+    },
+    "required": [
+      "Enabled",
+      "HashingAlgorithm",
+      "HeadersToBeHashed",
+      "Delimiter"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d8c"
+  },
+  "id": "filter_on_condition",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "filter",
+    "iconBackgroundColor": "#8B5CF6",
+    "type": "filter",
+    "label": "Filter On Condition",
+    "tooltipText": "Filters data based on conditions"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "filterCondition": {
+        "type": "string",
+        "title": "Filter Condition",
+        "default": "${header_value:notNull()}",
+        "minLength": 5
+      }
+    },
+    "required": [
+      "filterCondition"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d8d"
+  },
+  "id": "event_notification_read",
+  "context": "connectplus",
+  "class": "source",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "alarm",
+    "iconBackgroundColor": "#F59E0B",
+    "type": "kafka",
+    "label": "Event Notification Read",
+    "tooltipText": "Event Notification Block"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "kafkaTopics": {
+        "type": "string",
+        "title": "Kafka topics comma separated"
+      }
+    },
+    "required": [
+      "kafkaTopics"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d8e"
+  },
+  "id": "kafka_topic_read",
+  "context": "connectplus",
+  "class": "source",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "message",
+    "iconBackgroundColor": "#8B5CF6",
+    "type": "kafka",
+    "label": "Kafka Topic Read",
+    "tooltipText": "Pulls data from a kafka topic"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "topics": {
+        "type": "string",
+        "title": "Kafka topics comma separated"
+      },
+      "groupId": {
+        "type": "string",
+        "title": "Consumer Group Id",
+        "default": "${workspaceUUID}"
+      },
+      "Header": {
+        "type": "string",
+        "title": "Headers as Attribute",
+        "oneOf": [
+          { "const": "traceable_id", "title": "Traceable Id" },
+          { "const": ".*", "title": "All" }
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      },
+      "Unique Id for tracing": {
+        "type": "string",
+        "title": "Unique Id for tracing",
+        "default": "${kafka.key}_${kafka.offset}_${kafka.partition}_${kafka.topic}_${kafka.timestamp}"
+      },
+      "kafkaConnectionService": {
+        "type": "string",
+        "title": "Kafka client service to connect to server",
+        "oneOf": [
+          {"const": "e82c0901-019a-1000-0000-000024383183", "title": "Event-notification-kafka"},
+          {"const": "e4019edc-019a-1000-0000-0000394c142c", "title": "connectplus-kafka service"}
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      }
+    },
+    "required": [
+      "topics",
+      "groupId",
+      "Header",
+      "Unique Id for tracing",
+      "kafkaConnectionService"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d8f"
+  },
+  "id": "s3_write",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "upload",
+    "iconBackgroundColor": "#F59E0B",
+    "type": "s3",
+    "label": "S3 Write",
+    "tooltipText": "Put S3 Object"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "s3ObjectKey": {
+        "type": "string",
+        "title": "S3 Object name/Filename",
+        "default": "${filename}"
+      },
+      "s3BucketName": {
+        "type": "string",
+        "title": "S3 Bucket Name",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "contentType": {
+        "type": "string",
+        "title": "Content Type",
+        "default": "application/octet-stream"
+      },
+      "accessKey": {
+        "type": "string",
+        "title": "Access Key",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "secretKey": {
+        "type": "string",
+        "title": "Secret Key",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "awsRegion": {
+        "type": "string",
+        "title": "AWS Region",
+        "enum": [
+          "us-east-1",
+          "eu-west-1",
+          "ap-southeast-1",
+          "ap-south-1",
+          "us-west-2",
+          "us-east-2"
+        ],
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "AWSCredentialsProviderService": {
+        "type": "string",
+        "title": "AWS Credentials Provider service",
+        "oneOf": [
+          { "const": "", "title": "None" },
+          { "const": "1cda1e01-0195-1000-ffff-ffffd7b14aca", "title": "InternalService" }
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      }
+    },
+    "required": [
+      "s3ObjectKey",
+      "s3BucketName",
+      "contentType",
+      "awsRegion"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d90"
+  },
+  "id": "split_json",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "Split-data",
+    "iconBackgroundColor": "#06B6D4",
+    "type": "transform",
+    "label": "Split JSON",
+    "tooltipText": "Splits input json to multiple flow files"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "splitExpression": {
+        "type": "string",
+        "title": "JsonPath Expression",
+        "description": "Json expression",
+        "default": "$.[*]"
+      },
+      "splitResponse": {
+        "type": "string",
+        "title": "Split Response",
+        "enum": [
+          "true",
+          "false"
+        ],
+        "default": "true",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      }
+    },
+    "required": [
+      "splitExpression",
+      "splitResponse"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d91"
+  },
+  "id": "iris_ftp_audience_refresh",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "retry",
+    "iconBackgroundColor": "#14B8A6",
+    "type": "api",
+    "label": "Iris FTP Audience Refresh",
+    "tooltipText": "Iris FTP Audience Refresh"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "apiMethod": {
+        "type": "string",
+        "title": "API Method",
+        "enum": [
+          "GET",
+          "POST"
+        ],
+        "default": "POST",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "apiUrl": {
+        "type": "string",
+        "title": "Remote API URL",
+        "default": "/"
+      },
+      "orgIdHeader": {
+        "type": "string",
+        "title": "X_CAP_ORG",
+        "default": ""
+      },
+      "capillaryToken": {
+        "type": "string",
+        "title": "X_CAP_CT",
+        "default": ""
+      }
+    },
+    "required": [
+      "apiMethod",
+      "apiUrl",
+      "orgIdHeader",
+      "capillaryToken"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d92"
+  },
+  "id": "s3_read",
+  "context": "connectplus",
+  "class": "source",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "download",
+    "iconBackgroundColor": "#F59E0B",
+    "type": "s3",
+    "label": "S3 Read",
+    "tooltipText": "Poll S3 bucket, downloads file in the path and moves file"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "s3BucketName": {
+        "type": "string",
+        "title": "Bucket Name",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "s3BucketRegion": {
+        "type": "string",
+        "title": "S3 Region",
+        "enum": [
+          "us-gov-west-1",
+          "us-gov-east-1",
+          "us-east-1",
+          "us-east-2",
+          "us-west-1",
+          "us-west-2",
+          "eu-west-1",
+          "eu-west-2",
+          "eu-west-3",
+          "eu-central-1",
+          "eu-north-1",
+          "ap-east-1",
+          "ap-south-1",
+          "ap-southeast-1",
+          "ap-southeast-2",
+          "ap-northeast-1",
+          "ap-northeast-2",
+          "sa-east-1",
+          "cn-north-1",
+          "cn-northwest-1",
+          "ca-central-1",
+          "me-south-1"
+        ],
+        "default": "us-east-1",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "s3AccessKey": {
+        "type": "string",
+        "title": "S3 accessKey",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "s3SecretKey": {
+        "type": "string",
+        "title": "Secret Key",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "s3InputPath": {
+        "type": "string",
+        "title": "Input Path",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "s3OutputPath": {
+        "type": "string",
+        "title": "Output Path",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "s3FilePattern": {
+        "type": "string",
+        "title": "Filename Pattern"
+      },
+      "apiErrorFilePath": {
+        "type": "string",
+        "title": "API Error Filepath",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "fileDelimiter": {
+        "type": "string",
+        "title": "File Delimiter",
+        "default": ","
+      }
+    },
+    "required": [
+      "s3BucketName",
+      "s3InputPath",
+      "s3OutputPath",
+      "fileDelimiter"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d93"
+  },
+  "id": "transform_header_data",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "graph",
+    "iconBackgroundColor": "#6366F1",
+    "type": "transform",
+    "label": "Transform Header Data",
+    "tooltipText": "Header and expression based data manipulation"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "outputHeadersOrder": {
+        "type": "string",
+        "title": "Output Headers Order"
+      },
+      "outputFileDelimiter": {
+        "type": "string",
+        "title": "Output File Delimiter",
+        "default": ","
+      },
+      "outputFileName": {
+        "type": "string",
+        "title": "Output Filename",
+        "default": "${filename}"
+      },
+      "headerMapping": {
+        "type": "string",
+        "title": "Header Mapping",
+        "default": "{}"
+      },
+      "isHeaderless": {
+        "type": "boolean",
+        "title": "Is the file headerless?",
+        "default": false
+      },
+      "headerlessMapping": {
+        "type": "string",
+        "title": "Mention header names (for use in mapping and expressions)"
+      }
+    },
+    "required": [
+      "outputHeadersOrder",
+      "outputFileDelimiter",
+      "outputFileName",
+      "headerMapping",
+      "isHeaderless"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d94"
+  },
+  "id": "credential_aware_ftp_listing",
+  "context": "connectplus",
+  "class": "source",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "FTP Connector",
+    "iconBackgroundColor": "#2563EB",
+    "type": "sftp",
+    "label": "Credential Aware FTP Listing",
+    "tooltipText": "Poll SFTP server and fetch the source file satisfying regex for reconciliation"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "host": {
+        "type": "string",
+        "title": "Hostname",
+        "minLength": 5,
+        "maxLength": 100,
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "user": {
+        "type": "string",
+        "title": "Username",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "pass": {
+        "type": "string",
+        "title": "Password",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "path": {
+        "type": "string",
+        "title": "Source Directory",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "fileName": {
+        "type": "string",
+        "title": "Filename Pattern",
+        "oneOf": [
+          { "const": ".*.csv", "title": ".*.csv" },
+          { "const": ".*", "title": ".*" }
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      },
+      "processedPath": {
+        "type": "string",
+        "title": "Processed Directory",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "port": {
+        "type": "number",
+        "title": "Port",
+        "default": 22
+      }
+    },
+    "required": [
+      "host",
+      "user",
+      "pass",
+      "path",
+      "fileName",
+      "processedPath",
+      "port"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d95"
+  },
+  "id": "databricks_job_trigger_and_status_check",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "data",
+    "iconBackgroundColor": "#E62E71",
+    "type": "databricks",
+    "label": "Databricks Job Trigger And Status Check",
+    "tooltipText": "Databricks block"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "jobId": {
+        "type": "string",
+        "title": "Job ID"
+      },
+      "maxRetries": {
+        "type": "string",
+        "title": "Max Retries"
+      },
+      "dataBricksProcessedFilesPath": {
+        "type": "string",
+        "title": "dataBricks Processed Files Path",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "dataBricksToken": {
+        "type": "string",
+        "title": "dataBricksToken",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      },
+      "dataBricksUrl": {
+        "type": "string",
+        "title": "dataBricksUrl",
+        "uiSchema": {
+          "customComponent": "ConfigManagerSelect"
+        }
+      }
+    },
+    "required": [
+      "jobId",
+      "maxRetries",
+      "dataBricksProcessedFilesPath",
+      "dataBricksToken",
+      "dataBricksUrl"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d96"
+  },
+  "id": "cron_trigger",
+  "context": "connectplus",
+  "class": "source",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "alarm",
+    "iconBackgroundColor": "#64748B",
+    "type": "trigger",
+    "label": "Cron Trigger",
+    "tooltipText": "Cron Based Trigger"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "CronTrigger": {
+        "type": "string",
+        "title": "Cron Trigger Schedule",
+        "default": "0 0/5 * * * ?"
+      }
+    },
+    "required": []
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d97"
+  },
+  "id": "two_join",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "join-link",
+    "iconBackgroundColor": "#0D9488",
+    "type": "transform",
+    "label": "Two Join",
+    "tooltipText": "Join two files based on specified headers"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "joinType": {
+        "type": "string",
+        "title": "Files 1-2 Join Type",
+        "enum": [
+          "LEFT_OUTER_JOIN",
+          "OUTER_JOIN",
+          "INNER_JOIN",
+          "RIGHT_OUTER_JOIN"
+        ],
+        "default": "LEFT_OUTER_JOIN",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "filesDelimiter": {
+        "type": "string",
+        "title": "All Files Delimiter"
+      },
+      "fileOneRegex": {
+        "type": "string",
+        "title": "File 1 Regex"
+      },
+      "fileOneHeaders": {
+        "type": "string",
+        "title": "File 1 Headers"
+      },
+      "fileTwoRegex": {
+        "type": "string",
+        "title": "File 2 Regex"
+      },
+      "fileTwoHeaders": {
+        "type": "string",
+        "title": "File 2 Headers"
+      },
+      "joinedFilename": {
+        "type": "string",
+        "title": "Output Filename"
+      },
+      "joinUseCase": {
+        "type": "string",
+        "title": "File Join Use Case",
+        "enum": [
+          "TRANSACTION_LINE_ITEM",
+          "NONE"
+        ],
+        "default": "NONE",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "useAlphabeticalSort": {
+        "type": "boolean",
+        "title": "Use Alphabetical Sort"
+      },
+      "isMergeBasedOnName": {
+        "type": "boolean",
+        "title": "Merge based on common Name"
+      },
+      "fileTemplate1": {
+        "type": "string",
+        "title": "Merge based on common Name Template File One"
+      },
+      "fileTemplate2": {
+        "type": "string",
+        "title": "Merge based on common Name Template File Two"
+      },
+      "isHeaderlessFile1": {
+        "type": "boolean",
+        "title": "File One is Headerless",
+        "default": false
+      },
+      "isHeaderlessFile2": {
+        "type": "boolean",
+        "title": "File two is Headerless",
+        "default": false
+      },
+      "fileHeaders1": {
+        "type": "string",
+        "title": "File One Mention Header names(for use in mapping and expressions)"
+      },
+      "fileHeaders2": {
+        "type": "string",
+        "title": "File Two Mention Header names(for use in mapping and expressions)"
+      },
+      "matchallregex": {
+        "type": "string",
+        "title": "Match All Regex",
+        "enum": [
+          "true",
+          "false"
+        ],
+        "default": "false",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "alluniquematch": {
+        "type": "string",
+        "title": "All Unique Match",
+        "enum": [
+          "true",
+          "false"
+        ],
+        "default": "false",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      }
+    },
+    "required": [
+      "joinType",
+      "filesDelimiter",
+      "fileOneRegex",
+      "fileOneHeaders",
+      "fileTwoRegex",
+      "fileTwoHeaders",
+      "joinedFilename",
+      "joinUseCase"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d98"
+  },
+  "id": "three_join",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "join-link",
+    "iconBackgroundColor": "#0D9488",
+    "type": "transform",
+    "label": "Three Join",
+    "tooltipText": "Join three files based on specified headers"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "oneTwoJoinType": {
+        "type": "string",
+        "title": "Files 1-2 Join Type",
+        "enum": [
+          "LEFT_OUTER_JOIN",
+          "OUTER_JOIN",
+          "INNER_JOIN"
+        ],
+        "default": "LEFT_OUTER_JOIN",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "oneThreeJoinType": {
+        "type": "string",
+        "title": "Files 1-3 Join Type",
+        "enum": [
+          "LEFT_OUTER_JOIN",
+          "OUTER_JOIN",
+          "INNER_JOIN"
+        ],
+        "default": "LEFT_OUTER_JOIN",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "filesDelimiter": {
+        "type": "string",
+        "title": "All Files Delimiter"
+      },
+      "fileOneRegex": {
+        "type": "string",
+        "title": "File 1 Regex"
+      },
+      "fileOneHeaders": {
+        "type": "string",
+        "title": "File 1 Headers"
+      },
+      "fileTwoRegex": {
+        "type": "string",
+        "title": "File 2 Regex"
+      },
+      "fileTwoHeaders": {
+        "type": "string",
+        "title": "File 2 Headers"
+      },
+      "fileThreeRegex": {
+        "type": "string",
+        "title": "File 3 Regex"
+      },
+      "fileThreeHeaders": {
+        "type": "string",
+        "title": "File 3 Headers"
+      },
+      "joinedFilename": {
+        "type": "string",
+        "title": "Output Filename"
+      },
+      "joinUseCase": {
+        "type": "string",
+        "title": "File Join Use Case",
+        "enum": [
+          "TRANSACTION_LINE_ITEM",
+          "NONE"
+        ],
+        "default": "NONE",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "fileHeaders1": {
+        "type": "string",
+        "title": "File One Mention Header names(for use in mapping and expressions)"
+      },
+      "isHeaderlessFile1": {
+        "type": "boolean",
+        "title": "File One is Headerless",
+        "default": false
+      },
+      "fileHeaders2": {
+        "type": "string",
+        "title": "File Two Mention Header names(for use in mapping and expressions)"
+      },
+      "isHeaderlessFile2": {
+        "type": "boolean",
+        "title": "File two is Headerless",
+        "default": false
+      },
+      "isHeaderlessFile3": {
+        "type": "boolean",
+        "title": "File three is Headerless",
+        "default": false
+      },
+      "fileHeaders3": {
+        "type": "string",
+        "title": "File Three Mention Header names(for use in mapping and expressions)"
+      },
+      "isMergeBasedOnName": {
+        "type": "boolean",
+        "title": "Merge based on common Name"
+      },
+      "fileTemplate1": {
+        "type": "string",
+        "title": "Merge based on common Name Template File One"
+      },
+      "fileTemplate2": {
+        "type": "string",
+        "title": "Merge based on common Name Template File Two"
+      },
+      "fileTemplate3": {
+        "type": "string",
+        "title": "Merge based on common Name Template File Three"
+      },
+      "useAlphabeticalSort": {
+        "type": "boolean",
+        "title": "Use Alphabetical Sort"
+      }
+    },
+    "required": [
+      "oneTwoJoinType",
+      "oneThreeJoinType",
+      "filesDelimiter",
+      "fileOneRegex",
+      "fileOneHeaders",
+      "fileTwoRegex",
+      "fileTwoHeaders",
+      "fileThreeRegex",
+      "fileThreeHeaders",
+      "joinedFilename",
+      "joinUseCase"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d99"
+  },
+  "id": "convert_csv_to_xml",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "documentation",
+    "iconBackgroundColor": "#059669",
+    "type": "transform",
+    "label": "Convert CSV to XML",
+    "tooltipText": "CSV to XML block"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "xmlTop": {
+        "type": "string",
+        "title": "XML Top"
+      },
+      "xmlFileName": {
+        "type": "string",
+        "title": "XML file name"
+      },
+      "xmlRepeatingComponent": {
+        "type": "string",
+        "title": "XML Repeating Component"
+      },
+      "inputFileDelimiter": {
+        "type": "string",
+        "title": "Input File Delimiter"
+      },
+      "xmlBottom": {
+        "type": "string",
+        "title": "XML Bottom"
+      }
+    },
+    "required": [
+      "xmlTop",
+      "xmlFileName",
+      "xmlRepeatingComponent",
+      "inputFileDelimiter",
+      "xmlBottom"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d9a"
+  },
+  "id": "four_join",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "join-link",
+    "iconBackgroundColor": "#0D9488",
+    "type": "transform",
+    "label": "Four Join",
+    "tooltipText": "Join four files based on specified headers"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "oneTwoJoinType": {
+        "type": "string",
+        "title": "Files 1-2 Join Type",
+        "enum": [
+          "LEFT_OUTER_JOIN",
+          "OUTER_JOIN",
+          "INNER_JOIN"
+        ],
+        "default": "LEFT_OUTER_JOIN",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "oneThreeJoinType": {
+        "type": "string",
+        "title": "Files 1-3 Join Type",
+        "enum": [
+          "LEFT_OUTER_JOIN",
+          "OUTER_JOIN",
+          "INNER_JOIN"
+        ],
+        "default": "LEFT_OUTER_JOIN",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "oneFourJoinType": {
+        "type": "string",
+        "title": "Files 1-4 Join Type",
+        "enum": [
+          "LEFT_OUTER_JOIN",
+          "OUTER_JOIN",
+          "INNER_JOIN"
+        ],
+        "default": "LEFT_OUTER_JOIN",
+        "uiSchema": {
+          "customComponent": "CapSelect"
+        }
+      },
+      "filesDelimiter": {
+        "type": "string",
+        "title": "All Files Delimiter"
+      },
+      "fileOneRegex": {
+        "type": "string",
+        "title": "File 1 Regex"
+      },
+      "fileOneHeaders": {
+        "type": "string",
+        "title": "File 1 Headers"
+      },
+      "fileTwoRegex": {
+        "type": "string",
+        "title": "File 2 Regex"
+      },
+      "fileTwoHeaders": {
+        "type": "string",
+        "title": "File 2 Headers"
+      },
+      "fileThreeRegex": {
+        "type": "string",
+        "title": "File 3 Regex"
+      },
+      "fileThreeHeaders": {
+        "type": "string",
+        "title": "File 3 Headers"
+      },
+      "fileFourRegex": {
+        "type": "string",
+        "title": "File 4 Regex"
+      },
+      "fileFourHeaders": {
+        "type": "string",
+        "title": "File 4 Headers"
+      },
+      "joinedFilename": {
+        "type": "string",
+        "title": "Output Filename"
+      },
+      "isHeaderlessFile1": {
+        "type": "boolean",
+        "title": "File one is Headerless",
+        "default": false
+      },
+      "fileHeaders1": {
+        "type": "string",
+        "title": "File One Mention Header names(for use in mapping and expressions)"
+      },
+      "isHeaderlessFile2": {
+        "type": "boolean",
+        "title": "File two is Headerless",
+        "default": false
+      },
+      "fileHeaders2": {
+        "type": "string",
+        "title": "File Two Mention Header names(for use in mapping and expressions)"
+      },
+      "isHeaderlessFile3": {
+        "type": "boolean",
+        "title": "File three is Headerless",
+        "default": false
+      },
+      "fileHeaders3": {
+        "type": "string",
+        "title": "File Three Mention Header names(for use in mapping and expressions)"
+      },
+      "isHeaderlessFile4": {
+        "type": "boolean",
+        "title": "File four is Headerless",
+        "default": false
+      },
+      "fileHeaders4": {
+        "type": "string",
+        "title": "File Four Mention Header names(for use in mapping and expressions)"
+      },
+      "useAlphabeticalSort": {
+        "type": "boolean",
+        "title": "Use Alphabetical Sort",
+        "default": false
+      },
+      "isMergeBasedOnName": {
+        "type": "boolean",
+        "title": "Merge based on common Name",
+        "default": false
+      },
+      "fileTemplate1": {
+        "type": "string",
+        "title": "Merge based on common Name Template File One"
+      },
+      "fileTemplate2": {
+        "type": "string",
+        "title": "Merge based on common Name Template File Two"
+      },
+      "fileTemplate3": {
+        "type": "string",
+        "title": "Merge based on common Name Template File Three"
+      },
+      "fileTemplate4": {
+        "type": "string",
+        "title": "Merge based on common Name Template File Four"
+      }
+    },
+    "required": [
+      "oneTwoJoinType",
+      "oneThreeJoinType",
+      "oneFourJoinType",
+      "filesDelimiter",
+      "fileOneRegex",
+      "fileOneHeaders",
+      "fileTwoRegex",
+      "fileTwoHeaders",
+      "fileThreeRegex",
+      "fileThreeHeaders",
+      "fileFourRegex",
+      "fileFourHeaders",
+      "joinedFilename"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d9b"
+  },
+  "id": "kafka_topic_write",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "send",
+    "iconBackgroundColor": "#8B5CF6",
+    "type": "kafka",
+    "label": "Kafka Topic Write",
+    "tooltipText": "Kafka push connect to destination"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "kafkaConnectionService": {
+        "type": "string",
+        "title": "Kafka client service to connect to server",
+        "oneOf": [
+          {"const": "e82c0901-019a-1000-0000-000024383183", "title": "Event-notification-kafka"},
+          {"const": "e4019edc-019a-1000-0000-0000394c142c", "title": "connectplus-kafka service"}
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      },
+      "topics": {
+        "type": "string",
+        "title": "Kafka topic"
+      },
+      "kafkakey": {
+        "type": "string",
+        "title": "Kafka key"
+      },
+      "Header": {
+        "type": "string",
+        "title": "Headers as Attribute",
+        "oneOf": [
+          { "const": "traceable_id", "title": "Traceable Id" },
+          { "const": ".*", "title": "All" }
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      }
+    },
+    "required": [
+      "kafkaConnectionService",
+      "topics",
+      "kafkakey",
+      "Header"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d9c"
+  },
+  "id": "event_publish_kafka",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "send",
+    "iconBackgroundColor": "#8B5CF6",
+    "type": "kafka",
+    "label": "Event Publish Kafka",
+    "tooltipText": "Event Publish to Kafka"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "kafkaConnectionService": {
+        "type": "string",
+        "title": "Kafka client service to connect to server",
+        "oneOf": [
+          {"const": "e82c0901-019a-1000-0000-000024383183", "title": "Event-notification-kafka"},
+          {"const": "e4019edc-019a-1000-0000-0000394c142c", "title": "connectplus-kafka service"}
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      },
+      "kafkaTopics": {
+        "type": "string",
+        "title": "Kafka topic",
+        "default": ""
+      },
+      "kafkakey": {
+        "type": "string",
+        "title": "Kafka key"
+      },
+      "Header": {
+        "type": "string",
+        "title": "Headers as Attribute",
+        "oneOf": [
+          { "const": "traceable_id", "title": "Traceable Id" },
+          { "const": ".*", "title": "All" }
+        ],
+        "uiSchema": {
+          "customComponent": "CapRadioGroup"
+        }
+      }
+    },
+    "required": [
+      "kafkaConnectionService",
+      "kafkaTopics",
+      "kafkakey",
+      "Header"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d9d"
+  },
+  "id": "jslt_transform",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "javascript",
+    "iconBackgroundColor": "#6366F1",
+    "type": "transform",
+    "label": "JSLT Transform",
+    "tooltipText": "Transform Block"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "transformation": {
+        "type": "string",
+        "title": "JSLT Transformation"
+      }
+    },
+    "required": [
+      "transformation"
+    ]
+  }
+},
+{
+  "_id": {
+    "$oid": "6613c58296ddbc00126b2d9e"
+  },
+  "id": "jolt_transform",
+  "context": "connectplus",
+  "class": "executor",
+  "uiSpecs": {
+    "isMultiPath": false,
+    "isDisabled": false,
+    "iconType": "json",
+    "iconBackgroundColor": "#6366F1",
+    "type": "transform",
+    "label": "Jolt Transform",
+    "tooltipText": "Transform Block using jolt"
+  },
+  "config": {
+    "type": "object",
+    "properties": {
+      "joltTransformation": {
+        "type": "string",
+        "title": "JOLT Transformation"
+      }
+    },
+    "required": [
+      "joltTransformation"
+    ]
+  }
+}
+]

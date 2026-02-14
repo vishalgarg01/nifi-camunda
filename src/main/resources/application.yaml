@@ -55,6 +55,12 @@ nifi:
     log-dir: ${NIFI_MIGRATION_LOG_DIR:./nifi-migration-logs}
     glue:
       block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://crm-nightly-new.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
+    neo-rule:
+      base-url: ${NIFI_MIGRATION_NEO_RULE_BASE_URL:https://nightly.intouch.capillarytech.com/extensions/neo/api/v1/xto6x}
+      application-id: ${NIFI_MIGRATION_NEO_APPLICATION_ID:174ea672-f42a-4dad-9335-7498c522bc7f}
+      context: ${NIFI_MIGRATION_NEO_CONTEXT:connectplus}
+      cookie: ${NIFI_MIGRATION_NEO_COOKIE:_ga=GA1.4.1183059349.1736404268; csrftoken=1SY44IQOKvaFe6pwBMfbcdJMS1wZqlWN; FROM_LAST_OID=0; CS=8476c00f86b784b8aa611f20357dbeb8; CC=Zbi9w4dSPUGdUPhKXiJalltewcM6m54QjktCD53jvj3SDedPMbVHLfrcnZ3yejup; CCEXP=1771134421; federated_id_token=eyJraWQiOiJDOXBWZ1dSV3hOcV9oZk5sZmMtVXBuVkhnVE9xTGs3UkpJd3NRaTJXUllrIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIwMHVnczVydHAweWJQckNzOTR4NyIsIm5hbWUiOiJWaXNoYWwgR2FyZyIsInZlciI6MSwiaXNzIjoiaHR0cHM6Ly9jYXBpbGxhcnkub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQiLCJhdWQiOiIwb2ExN3F2MjEyWm5RSHU5WDR4NyIsImlhdCI6MTc3MTA0ODAyMSwiZXhwIjoxNzcxMDUxNjIxLCJqdGkiOiJJRC5mbnR4ZWd0LXhqUGJVM1hSd0ZlRkZIeUsxanhDZ0NjYWpGNFJ4WVB4d2RjIiwiYW1yIjpbInB3ZCJdLCJpZHAiOiIwb2FxODJ6MTE5dG1SYnpONjR4NyIsInByZWZlcnJlZF91c2VybmFtZSI6InZpc2hhbC5nYXJnQGNhcGlsbGFyeXRlY2guY29tIiwiYXV0aF90aW1lIjoxNzcxMDQ4MDE5LCJhdF9oYXNoIjoibmszX09kS2prd0FEZmUtd2hmdDZOUSJ9.dlW-0R1zoKpTUFtIBr-9Lx8ivGtB5XE6Oe7zhW2KrNJSO_cyAt-ZnYRXoNNP-_Wm-X1C7l6L_Dj4YgC0F_TkZzsf71FWbn_KirvuCGLatsnu_JbQ6SB2xUFtHpJTr1y8pDzQ1qXmQAo1NEXSAhrztdQsQW2YhKEVsSEJsmvAMlgiWW7lCB_AOTjspZEBcu-qLRaUJ4BKXcdUhCRC637YHmkFe98GQ_t7mHTOkvP5oIhFP98XIvonO85nOHY5o8CKMsF2J-5KxOv-L-McPOmFypSKkMR8qYhkiJg8TH04y0T_JbrkTbmohD9HfXcFSeGFTSeOpeLcdCMb48yteQyjWQ; CT=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyIyODYyNzEiXSwib3JnSUQiOjAsImV4cCI6MTc3MTEzNDQyMiwiaWF0IjoxNzcxMDQ4MDIyLCJpc3MiOiJjYXBpbGxhcnl0ZWNoLmNvbSIsImF1ZCI6ImNhcGlsbGFyeSxpbnRvdWNoLGFyeWEscmVvbixhcHBzIiwic291cmNlIjoiV0VCQVBQIiwicmVmZXJlbmNlSUQiOiI1MDc3MTM4NCJ9.a4fao3A8ujU2pM-L1ortfUvt5-Q7rD33mpOmIBZBHes; userPreferenceSelected=50771384_PLID; OID=1231}
+      remote-user: ${NIFI_MIGRATION_NEO_REMOTE_USER:50771384}
     string:
       encryptor:
         algorithm: ${NIFI_MIGRATION_STRING_ENCRYPTOR_ALGORITHM:PBEWITHMD5AND256BITAES-CBC-OPENSSL}

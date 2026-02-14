@@ -2,6 +2,7 @@ package com.emigran.nifi.migration.service;
 
 import com.emigran.nifi.migration.client.NifiNewClient;
 import com.emigran.nifi.migration.client.NifiOldClient;
+import com.emigran.nifi.migration.client.NeoRuleApiClient;
 import com.emigran.nifi.migration.model.DataflowDetail;
 import com.emigran.nifi.migration.model.DataflowSummary;
 import com.emigran.nifi.migration.model.Block;
@@ -11,16 +12,22 @@ import com.emigran.nifi.migration.model.Field;
 import com.emigran.nifi.migration.model.TransformFlowProperties;
 import com.emigran.nifi.migration.model.Workspace;
 import com.emigran.nifi.migration.model.WorkspaceCreateRequest;
-import com.emigran.nifi.migration.model.DataflowStatus;
+import com.emigran.nifi.migration.model.Connection;
 import com.emigran.nifi.migration.model.ProcessorConcurrencyRequest;
 import com.emigran.nifi.migration.model.Schedule;
+import com.emigran.nifi.migration.model.neo.BlockPosition;
+import com.emigran.nifi.migration.model.neo.BlockRelation;
+import com.emigran.nifi.migration.model.neo.NeoBlock;
+import com.emigran.nifi.migration.model.neo.VersionUpdateRequest;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
 import com.emigran.nifi.migration.service.FlowXmlConcurrencyExtractor.ProcessorConcurrencyInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +40,8 @@ public class NifiMigrationService {
 
     private final NifiOldClient oldClient;
     private final NifiNewClient newClient;
+    private final NeoRuleApiClient neoRuleApiClient;
+    private final RulesMetasService rulesMetasService;
     private final FlowXmlSecretResolver secretResolver;
     private final FlowXmlTransformPropertiesExtractor transformPropertiesExtractor;
     private final FlowXmlConcurrencyExtractor flowXmlConcurrencyExtractor;
@@ -46,12 +55,16 @@ public class NifiMigrationService {
     @Autowired
     public NifiMigrationService(NifiOldClient oldClient,
                                 NifiNewClient newClient,
+                                NeoRuleApiClient neoRuleApiClient,
+                                RulesMetasService rulesMetasService,
                                 FlowXmlSecretResolver secretResolver,
                                 FlowXmlTransformPropertiesExtractor transformPropertiesExtractor,
                                 FlowXmlConcurrencyExtractor flowXmlConcurrencyExtractor,
                                 MigrationResultLogger resultLogger) {
         this.oldClient = oldClient;
         this.newClient = newClient;
+        this.neoRuleApiClient = neoRuleApiClient;
+        this.rulesMetasService = rulesMetasService;
         this.secretResolver = secretResolver;
         this.transformPropertiesExtractor = transformPropertiesExtractor;
         this.flowXmlConcurrencyExtractor = flowXmlConcurrencyExtractor;
@@ -157,9 +170,7 @@ public class NifiMigrationService {
             secretResolver.resolve(detail, sourceWorkspace.getName(), sourceWorkspace.getUuid(), summary.getUuid());
 
             TransformContext transformContext = null;
-            DiyDataflowRequest diyRequest;
             boolean isTransform = isTransformFlow(detail);
-            log.info("[migrateDataflow] isTransformFlow={}, building DIY request", isTransform);
             if (isTransform) {
                 Block transformBlock = detail.getBlocks().stream()
                         .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
@@ -189,7 +200,6 @@ public class NifiMigrationService {
                             "Transform JSLT/group-by generation failed", ex);
                     return;
                 }
-                log.info("[migrateDataflow] Building DIY request for transform flow");
                 transformContext = new TransformContext(
                         recordGroupBySource,
                         jsltScript,
@@ -202,56 +212,58 @@ public class NifiMigrationService {
                         transformProps.getHeaderValue(),
                         transformProps.getChildTillCode(),
                         transformProps.getChildOrgId());
-                diyRequest = buildDiyRequestForTransform(detail, transformContext);
-            } else {
-                diyRequest = buildDiyRequest(detail);
             }
 
-            log.info("[migrateDataflow] Creating DIY dataflow on target");
-            DataflowDetail created = newClient.createDiyDataflow(targetWorkspace.getId(), diyRequest);
-            String targetUuid = created != null && created.getUuid() != null ? created.getUuid() : summary.getUuid();
-            log.info("[migrateDataflow] Created/found target uuid={}", targetUuid);
-
-            log.info("[migrateDataflow] Merging for update and applying transform context if any");
-            DataflowDetail updatePayload = mergeForUpdate(created != null ? created : detail, detail);
-            if (transformContext != null && updatePayload != null && updatePayload.getBlocks() != null) {
-                applyTransformContextToBlocks(updatePayload.getBlocks(), transformContext);
+            // New flow: create canvas dataflow -> get version -> update with blocks+schedule -> post-hook -> update concurrency
+            String neoDataflowId = neoRuleApiClient.createCanvasDataflow(detail.getName());
+            if (neoDataflowId == null) {
+                log.error("[migrateDataflow] Neo rule API not configured or create failed");
+                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
+                        "Neo rule API not configured or create canvas failed", null);
+                return;
             }
 
-            log.info("[migrateDataflow] Updating dataflow on target");
-            DataflowDetail updated = newClient.updateDataflow(targetWorkspace.getId(), targetUuid, updatePayload);
-
-            Schedule sched = detail.getSchedule();
-            if (sched != null) {
-                if (sched.getCron() == null && sched.getScheduleExpression() != null) {
-                    sched.setCron(sched.getScheduleExpression());
-                }
-                if (sched.getCron() != null && !sched.getCron().trim().isEmpty()) {
-                    log.info("[migrateDataflow] Updating schedule");
-                    newClient.updateSchedule(targetWorkspace.getId(), targetUuid, sched);
-                }
+            String versionId = neoRuleApiClient.getFirstVersionId(neoDataflowId);
+            if (versionId == null) {
+                log.error("[migrateDataflow] Get versions failed");
+                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
+                        "Get versions failed", null);
+                return;
             }
+
+            log.info("[migrateDataflow] Building neo blocks from detail");
+            List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext);
+            String scheduleCron = getScheduleCron(detail);
+
+            VersionUpdateRequest updateRequest = new VersionUpdateRequest();
+            updateRequest.setBlocks(neoBlocks);
+            updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
+            updateRequest.setTag("migration");
+
+            log.info("[migrateDataflow] Updating version with {} blocks", neoBlocks.size());
+            neoRuleApiClient.updateVersion(neoDataflowId, versionId, updateRequest);
+
+            log.info("[migrateDataflow] Post-hook to make dataflow live");
+            neoRuleApiClient.postHookForConnectPlus(neoDataflowId, versionId);
+
+            // Build a minimal DataflowDetail with blocks (names only) for concurrency update
+            DataflowDetail newDataflowForConcurrency = new DataflowDetail();
+            newDataflowForConcurrency.setUuid(neoDataflowId);
+            newDataflowForConcurrency.setBlocks(neoBlocks.stream()
+                    .map(nb -> {
+                        Block b = new Block();
+                        b.setName(nb.getName());
+                        b.setType(nb.getType());
+                        return b;
+                    })
+                    .collect(Collectors.toList()));
 
             log.info("[migrateDataflow] Updating processor concurrency from flow.xml");
-            updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, targetUuid, updated);
+            updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, neoDataflowId, newDataflowForConcurrency);
 
-            log.info("[migrateDataflow] Checking post-update status");
-            if (updated != null && updated.getStatus() != null) {
-                DataflowStatus st = updated.getStatus();
-                int disabled = st.getDisabledCount() == null ? 0 : st.getDisabledCount();
-                int invalid = st.getInvalidCount() == null ? 0 : st.getInvalidCount();
-                if (disabled > 0 || invalid > 0) {
-                    log.error("[migrateDataflow] Post-update status invalid: disabled={}, invalid={}", disabled, invalid);
-                    resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
-                            "Post-update status invalid/disabled counts > 0 (disabled=" + disabled + ", invalid=" + invalid + ")", null);
-                    return;
-                }
-            }
-
-            log.info("[migrateDataflow] SUCCESS - dataflow={} -> workspace {} uuid {}", summary.getName(), targetWorkspace.getId(), updated != null ? updated.getUuid() : targetUuid);
+            log.info("[migrateDataflow] SUCCESS - dataflow={} -> neoDataflowId={}", summary.getName(), neoDataflowId);
             resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
-                    "Migrated to workspace " + targetWorkspace.getId() + " with uuid " +
-                            (updated != null ? updated.getUuid() : targetUuid));
+                    "Migrated with neo dataflow id " + neoDataflowId);
         } catch (Exception ex) {
             log.error("[migrateDataflow] FAILED - dataflow={}: {}", summary.getName(), ex.getMessage(), ex);
             resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(), "Migration failed", ex);
@@ -400,6 +412,189 @@ public class NifiMigrationService {
         List<DiyBlockRequest> mapped = detail.getBlocks() == null ? Collections.emptyList() :
                 detail.getBlocks().stream().map(this::toDiyBlock).collect(Collectors.toList());
         return new DiyDataflowRequest(detail.getName(), mapped);
+    }
+
+    /**
+     * Builds the list of NeoBlock for the version update API from old dataflow detail.
+     * Uses RulesMetas_cps.json for config property names/defaults and LEGACY_TO_NEW for block type mapping.
+     * Expands transform_to_* into convert_csv_to_json, jslt_transform, jolt_transform when transformContext is set.
+     */
+    private List<NeoBlock> buildNeoBlocks(DataflowDetail detail, TransformContext transformContext) {
+        List<Block> blocks = detail.getBlocks() == null ? Collections.emptyList() : detail.getBlocks();
+        List<BlockOrderEntry> ordered = new ArrayList<>();
+
+        Block transformBlock = blocks.stream()
+                .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
+                .findFirst()
+                .orElse(null);
+        int transformOrder = transformBlock != null ? transformBlock.getOrder() : -1;
+        String baseName = transformBlock != null ? transformBlock.getName() : null;
+
+        for (Block b : blocks) {
+            if (b.getType() != null && b.getType().startsWith("transform_to_")) {
+                ordered.add(new BlockOrderEntry(baseName + "-csv", mapLegacyToNew("convert_csv_to_json"), transformOrder, b.isSource(), b, "csv"));
+                ordered.add(new BlockOrderEntry(baseName + "-jslt", "jslt_transform", transformOrder + 1, false, b, "jslt"));
+                ordered.add(new BlockOrderEntry(baseName + "-jolt", "jolt_transform", transformOrder + 2, false, b, "jolt"));
+            } else if (transformOrder >= 0 && b.getOrder() > transformOrder) {
+                ordered.add(new BlockOrderEntry(b.getName(), mapLegacyToNew(b.getType()), b.getOrder() + 2, b.isSource(), b, null));
+            } else {
+                ordered.add(new BlockOrderEntry(b.getName(), mapLegacyToNew(b.getType()), b.getOrder(), b.isSource(), b, null));
+            }
+        }
+        ordered.sort((a, b) -> Integer.compare(a.order, b.order));
+
+        Map<Integer, String> orderToName = new HashMap<>();
+        for (BlockOrderEntry e : ordered) {
+            orderToName.put(e.order, e.name);
+        }
+
+        List<NeoBlock> out = new ArrayList<>();
+        int positionX = 0;
+        for (BlockOrderEntry e : ordered) {
+            NeoBlock neo = new NeoBlock();
+            neo.setName(e.name);
+            neo.setType(e.newType);
+            neo.setSource(e.source);
+            neo.setPosition(new BlockPosition(positionX, 0));
+            positionX += 320;
+
+            Map<String, Object> config = new LinkedHashMap<>(rulesMetasService.getConfigDefaultsForBlockType(e.newType));
+            if (e.transformPart != null && transformContext != null) {
+                fillConfigFromTransformContext(config, e.transformPart, transformContext);
+            } else if (e.oldBlock.getFields() != null) {
+                fillConfigFromFields(config, e.oldBlock.getFields());
+            }
+            neo.setConfig(config);
+
+            Map<String, String> varMap = buildVariableConfigKeyMap(config, e.oldBlock.getFields());
+            neo.setVariableConfigKeyMap(varMap != null && !varMap.isEmpty() ? varMap : Collections.emptyMap());
+
+            List<BlockRelation> relations = new ArrayList<>();
+            // For transform expansion: csv->jslt, jslt->jolt; only jolt gets original transform block's connections
+            if ("csv".equals(e.transformPart) && transformBlock != null) {
+                relations.add(new BlockRelation("rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10), "isSuccess()", Collections.emptyList(), baseName + "-jslt"));
+            } else if ("jslt".equals(e.transformPart)) {
+                relations.add(new BlockRelation("rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10), "isSuccess()", Collections.emptyList(), baseName + "-jolt"));
+            } else if (e.oldBlock.getConnections() != null) {
+                for (Connection c : e.oldBlock.getConnections()) {
+                    int targetOrder = c.getBlockId();
+                    if (e.transformPart != null && targetOrder == transformOrder) continue;
+                    if (transformOrder >= 0 && targetOrder > transformOrder) targetOrder = targetOrder + 2;
+                    String toName = orderToName.get(targetOrder);
+                    if (toName != null) {
+                        relations.add(new BlockRelation(
+                                "rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10),
+                                "isSuccess()",
+                                Collections.emptyList(),
+                                toName));
+                    }
+                }
+            }
+            neo.setRelations(relations);
+            out.add(neo);
+        }
+        return out;
+    }
+
+    private static final class BlockOrderEntry {
+        final String name;
+        final String newType;
+        final int order;
+        final boolean source;
+        final Block oldBlock;
+        final String transformPart; // "csv" | "jslt" | "jolt" | null
+
+        BlockOrderEntry(String name, String newType, int order, boolean source, Block oldBlock, String transformPart) {
+            this.name = name;
+            this.newType = newType;
+            this.order = order;
+            this.source = source;
+            this.oldBlock = oldBlock;
+            this.transformPart = transformPart;
+        }
+    }
+
+    private void fillConfigFromFields(Map<String, Object> config, List<Field> fields) {
+        if (fields == null) return;
+        Map<String, String> byKey = new HashMap<>();
+        Map<String, String> byName = new HashMap<>();
+        for (Field f : fields) {
+            if (f.getKey() != null && f.getValue() != null) byKey.put(f.getKey().toLowerCase(), f.getValue());
+            if (f.getName() != null && f.getValue() != null) byName.put(f.getName().toLowerCase(), f.getValue());
+        }
+        for (String configKey : config.keySet()) {
+            String val = byKey.get(configKey.toLowerCase());
+            if (val == null) val = byName.get(configKey.toLowerCase());
+            if (val != null) {
+                Object parsed = parseConfigValue(config.get(configKey), val);
+                config.put(configKey, parsed);
+            }
+        }
+    }
+
+    private Object parseConfigValue(Object defaultVal, String value) {
+        if (value == null) return null;
+        if (defaultVal instanceof Number) return parseNumber(value);
+        if (defaultVal instanceof Boolean) return "true".equalsIgnoreCase(value);
+        return value;
+    }
+
+    private Number parseNumber(String value) {
+        if (value == null) return 0;
+        try {
+            if (value.contains(".")) return Double.parseDouble(value);
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private void fillConfigFromTransformContext(Map<String, Object> config, String part, TransformContext ctx) {
+        if ("csv".equals(part)) {
+            if (ctx.getRecordGroupBySource() != null) putByKey(config, "groupBy", ctx.getRecordGroupBySource());
+            if (ctx.getGroupSize() != null) putByKey(config, "groupSize", parseNumber(ctx.getGroupSize()));
+            if (ctx.getSortHeaders() != null) putByKey(config, "sortHeaders", ctx.getSortHeaders());
+            if (ctx.getAlphabeticalSort() != null) putByKey(config, "alphabeticalSort", "true".equalsIgnoreCase(ctx.getAlphabeticalSort()));
+            if (ctx.getAttributionType() != null) putByKey(config, "attribution_type", ctx.getAttributionType());
+            if (ctx.getAttributionCode() != null) putByKey(config, "attribution_code", ctx.getAttributionCode());
+            if (ctx.getHeaderValue() != null) putByKey(config, "header_value", ctx.getHeaderValue());
+            if (ctx.getChildTillCode() != null) putByKey(config, "child_till_code", ctx.getChildTillCode());
+            if (ctx.getChildOrgId() != null) putByKey(config, "child_org_id", ctx.getChildOrgId());
+        } else if ("jslt".equals(part) && ctx.getJsltScript() != null) {
+            putByKey(config, "transformation", ctx.getJsltScript());
+        } else if ("jolt".equals(part) && ctx.getJoltSpec() != null) {
+            putByKey(config, "joltTransformation", ctx.getJoltSpec());
+        }
+    }
+
+    private void putByKey(Map<String, Object> config, String key, Object value) {
+        if (config.containsKey(key)) config.put(key, value);
+    }
+
+    private Map<String, String> buildVariableConfigKeyMap(Map<String, Object> config, List<Field> fields) {
+        if (fields == null) return Collections.emptyMap();
+        Map<String, String> varMap = new HashMap<>();
+        for (Field f : fields) {
+            String v = f.getValue();
+            if (v != null && v.contains("___")) {
+                int i = v.indexOf("___");
+                String varKey = v.substring(0, i);
+                for (String configKey : config.keySet()) {
+                    if (configKey.equalsIgnoreCase(f.getKey()) || (f.getName() != null && configKey.equalsIgnoreCase(f.getName()))) {
+                        varMap.put(configKey, varKey);
+                        break;
+                    }
+                }
+            }
+        }
+        return varMap;
+    }
+
+    private String getScheduleCron(DataflowDetail detail) {
+        Schedule s = detail.getSchedule();
+        if (s == null) return null;
+        if (s.getCron() != null && !s.getCron().trim().isEmpty()) return s.getCron();
+        return s.getScheduleExpression();
     }
 
     private DiyBlockRequest toDiyBlock(com.emigran.nifi.migration.model.Block block) {

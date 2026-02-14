@@ -42,6 +42,21 @@ public class MigrationProperties {
     @Value("${nifi.migration.flow-xml.sensitive-key:}")
     private String sensitiveKey;
 
+    @Value("${nifi.migration.neo-rule.base-url:}")
+    private String neoRuleBaseUrl;
+
+    @Value("${nifi.migration.neo-rule.application-id:}")
+    private String neoRuleApplicationId;
+
+    @Value("${nifi.migration.neo-rule.context:connectplus}")
+    private String neoRuleContext;
+
+    @Value("${nifi.migration.neo-rule.cookie:}")
+    private String neoRuleCookie;
+
+    @Value("${nifi.migration.neo-rule.remote-user:}")
+    private String neoRuleRemoteUser;
+
     public String getOldBaseUrl() {
         return oldBaseUrl;
     }
@@ -88,5 +103,25 @@ public class MigrationProperties {
 
     public String getSensitiveKey() {
         return sensitiveKey;
+    }
+
+    public String getNeoRuleBaseUrl() {
+        return neoRuleBaseUrl;
+    }
+
+    public String getNeoRuleApplicationId() {
+        return neoRuleApplicationId;
+    }
+
+    public String getNeoRuleContext() {
+        return neoRuleContext;
+    }
+
+    public String getNeoRuleCookie() {
+        return neoRuleCookie;
+    }
+
+    public String getNeoRuleRemoteUser() {
+        return neoRuleRemoteUser;
     }
 }
