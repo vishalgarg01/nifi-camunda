@@ -3,6 +3,7 @@ package com.emigran.nifi.migration.client;
 import com.emigran.nifi.migration.config.MigrationProperties;
 import com.emigran.nifi.migration.model.neo.*;
 import java.util.Collections;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -128,6 +129,113 @@ public class NeoRuleApiClient {
             log.info("[NeoRuleApi] Updated version {} for dataflow {}", versionId, dataflowId);
         } catch (Exception ex) {
             log.error("[NeoRuleApi] Update version failed: {}", ex.getMessage(), ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Start the flow for a version. POST /rule/{dataflowId}/version/{versionId}/start?context=...&time=...
+     */
+    public void startVersion(String dataflowId, String versionId) {
+        String baseUrl = properties.getNeoRuleBaseUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("neo-rule base URL not configured");
+        }
+        String path = "/rule/" + dataflowId + "/version/" + versionId + "/start";
+        long time = System.currentTimeMillis();
+        String uri = UriComponentsBuilder.fromHttpUrl(baseUrl + path)
+                .queryParam("context", properties.getNeoRuleContext())
+                .queryParam("time", time)
+                .build(true)
+                .toUriString();
+
+        HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
+        try {
+            restTemplate.exchange(uri, HttpMethod.POST, entity, Void.class);
+            log.info("[NeoRuleApi] Started version {} for dataflow {}", versionId, dataflowId);
+        } catch (Exception ex) {
+            log.error("[NeoRuleApi] Start version failed: {}", ex.getMessage(), ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Send version for approval. POST /rule/{dataflowId}/version/{versionId}/send-for-approval?context=...&time=...
+     */
+    public void sendForApproval(String dataflowId, String versionId) {
+        String baseUrl = properties.getNeoRuleBaseUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("neo-rule base URL not configured");
+        }
+        String path = "/rule/" + dataflowId + "/version/" + versionId + "/send-for-approval";
+        long time = System.currentTimeMillis();
+        String uri = UriComponentsBuilder.fromHttpUrl(baseUrl + path)
+                .queryParam("context", properties.getNeoRuleContext())
+                .queryParam("time", time)
+                .build(true)
+                .toUriString();
+
+        HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
+        try {
+            restTemplate.exchange(uri, HttpMethod.POST, entity, Void.class);
+            log.info("[NeoRuleApi] Sent version {} for approval", versionId);
+        } catch (Exception ex) {
+            log.error("[NeoRuleApi] Send for approval failed: {}", ex.getMessage(), ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Approve the version. POST /rule/{dataflowId}/version/{versionId}/approve?context=...&time=...
+     * Body: {"reason":"No reason provided"}
+     */
+    public void approveVersion(String dataflowId, String versionId) {
+        String baseUrl = properties.getNeoRuleBaseUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("neo-rule base URL not configured");
+        }
+        String path = "/rule/" + dataflowId + "/version/" + versionId + "/approve";
+        long time = System.currentTimeMillis();
+        String uri = UriComponentsBuilder.fromHttpUrl(baseUrl + path)
+                .queryParam("context", properties.getNeoRuleContext())
+                .queryParam("time", time)
+                .build(true)
+                .toUriString();
+
+        Map<String, String> body = Collections.singletonMap("reason", "No reason provided");
+        HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, buildHeaders());
+        try {
+            restTemplate.exchange(uri, HttpMethod.POST, entity, Void.class);
+            log.info("[NeoRuleApi] Approved version {}", versionId);
+        } catch (Exception ex) {
+            log.error("[NeoRuleApi] Approve failed: {}", ex.getMessage(), ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Make the dataflow live. POST /rule/{dataflowId}/live?variantId={versionId}&context=...&time=...
+     */
+    public void makeLive(String dataflowId, String versionId) {
+        String baseUrl = properties.getNeoRuleBaseUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("neo-rule base URL not configured");
+        }
+        String path = "/rule/" + dataflowId + "/live";
+        long time = System.currentTimeMillis();
+        String uri = UriComponentsBuilder.fromHttpUrl(baseUrl + path)
+                .queryParam("variantId", versionId)
+                .queryParam("context", properties.getNeoRuleContext())
+                .queryParam("time", time)
+                .build(true)
+                .toUriString();
+
+        HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
+        try {
+            restTemplate.exchange(uri, HttpMethod.POST, entity, Void.class);
+            log.info("[NeoRuleApi] Made dataflow {} live with variant {}", dataflowId, versionId);
+        } catch (Exception ex) {
+            log.error("[NeoRuleApi] Make live failed: {}", ex.getMessage(), ex);
             throw ex;
         }
     }

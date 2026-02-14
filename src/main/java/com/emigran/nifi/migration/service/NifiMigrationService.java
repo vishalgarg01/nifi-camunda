@@ -258,7 +258,19 @@ public class NifiMigrationService {
                     .collect(Collectors.toList()));
 
             log.info("[migrateDataflow] Updating processor concurrency from flow.xml");
-            updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, neoDataflowId, newDataflowForConcurrency);
+            updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, neoDataflowId, versionId, newDataflowForConcurrency);
+
+            log.info("[migrateDataflow] Starting version in nifi");
+//            neoRuleApiClient.startVersion(neoDataflowId, versionId);
+
+            log.info("[migrateDataflow] Sending for approval");
+            neoRuleApiClient.sendForApproval(neoDataflowId, versionId);
+
+            log.info("[migrateDataflow] Approving version");
+            neoRuleApiClient.approveVersion(neoDataflowId, versionId);
+
+            log.info("[migrateDataflow] Making dataflow live");
+            neoRuleApiClient.makeLive(neoDataflowId, versionId);
 
             log.info("[migrateDataflow] SUCCESS - dataflow={} -> neoDataflowId={}", summary.getName(), neoDataflowId);
             resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
@@ -274,11 +286,11 @@ public class NifiMigrationService {
      * For all processors in the old dataflow (flow.xml) with concurrency != 1: resolve which
      * old block each processor belongs to, find the corresponding new block (same name), and
      * call the glue API to update concurrency on the new block. For InvokeHttp we pass
-     * processorType as InvokeHttpV2.
+     * processorType as InvokeHttpV2. Uses neoDataflowId and neoVersionId for the API.
      */
     private void updateProcessorConcurrencyFromFlowXml(String oldDataflowUuid, DataflowDetail oldDetail,
-                                                       String newDataflowUuid, DataflowDetail newDataflow) {
-        log.info("[updateProcessorConcurrencyFromFlowXml] START - oldUuid={}, newUuid={}", oldDataflowUuid, newDataflowUuid);
+                                                       String neoDataflowId, String neoVersionId, DataflowDetail newDataflow) {
+        log.info("[updateProcessorConcurrencyFromFlowXml] START - oldUuid={}, neoDataflowId={}, neoVersionId={}", oldDataflowUuid, neoDataflowId, neoVersionId);
         if (oldDetail == null || oldDetail.getBlocks() == null || newDataflow == null || newDataflow.getBlocks() == null) {
             log.info("[updateProcessorConcurrencyFromFlowXml] Skipping - missing detail or blocks");
             return;
@@ -302,7 +314,8 @@ public class NifiMigrationService {
                     ? "com.capillary.foundation.processors.InvokeHttpV2"
                     : info.getProcessorClass();
             ProcessorConcurrencyRequest request = new ProcessorConcurrencyRequest();
-            request.setDataflowId(newDataflowUuid);
+            request.setNeoDataflowId(neoDataflowId);
+            request.setNeoVersionId(neoVersionId);
             request.setBlockType(newBlock.getType());
             request.setBlockId("");
             request.setBlockName(newBlock.getName());

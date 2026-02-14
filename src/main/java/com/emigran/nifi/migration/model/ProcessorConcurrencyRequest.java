@@ -9,19 +9,28 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
  */
 @JsonInclude(Include.NON_NULL)
 public class ProcessorConcurrencyRequest {
-    private String dataflowId;
+    private String neoDataflowId;   // neo dataflow id
+    private String neoVersionId;    // neo version id
     private String blockType;
     private String blockId;
     private String blockName;
     private String processorType;
     private Integer concurrentlySchedulableTaskCount;
 
-    public String getDataflowId() {
-        return dataflowId;
+    public String getNeoDataflowId() {
+        return neoDataflowId;
     }
 
-    public void setDataflowId(String dataflowId) {
-        this.dataflowId = dataflowId;
+    public void setNeoDataflowId(String neoDataflowId) {
+        this.neoDataflowId = neoDataflowId;
+    }
+
+    public String getNeoVersionId() {
+        return neoVersionId;
+    }
+
+    public void setNeoVersionId(String neoVersionId) {
+        this.neoVersionId = neoVersionId;
     }
 
     public String getBlockType() {
