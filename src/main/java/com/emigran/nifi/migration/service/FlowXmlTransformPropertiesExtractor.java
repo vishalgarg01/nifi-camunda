@@ -48,6 +48,7 @@ public class FlowXmlTransformPropertiesExtractor {
 
     /** When choosing among multiple "Records Per Split" values, take one with numeric value less than this. */
     private static final int RECORDS_PER_SPLIT_MAX = 100;
+    private static final String LINE_NO = "lineNos";
 
     private final FlowXmlFetcher flowXmlFetcher;
 
@@ -140,6 +141,12 @@ public class FlowXmlTransformPropertiesExtractor {
                 String val = props.get(JOLT_SPECIFICATION);
                 if (val != null && !val.trim().isEmpty()) {
                     out.setJoltSpec(val.trim());
+                }
+            }
+            if (props.containsKey(LINE_NO)) {
+                String val = props.get(LINE_NO);
+                if (val != null && !val.trim().isEmpty()) {
+                    out.setLineNo(val.trim());
                 }
             }
             applyAttributionProps(props, out);

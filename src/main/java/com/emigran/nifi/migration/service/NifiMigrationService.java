@@ -11,7 +11,6 @@ import com.emigran.nifi.migration.model.DiyDataflowRequest;
 import com.emigran.nifi.migration.model.Field;
 import com.emigran.nifi.migration.model.TransformFlowProperties;
 import com.emigran.nifi.migration.model.Workspace;
-import com.emigran.nifi.migration.model.WorkspaceCreateRequest;
 import com.emigran.nifi.migration.model.ProcessorConcurrencyRequest;
 import com.emigran.nifi.migration.model.Schedule;
 import com.emigran.nifi.migration.model.neo.BlockPosition;
@@ -215,7 +214,8 @@ public class NifiMigrationService {
                         transformProps.getAttributionCode(),
                         transformProps.getHeaderValue(),
                         transformProps.getChildTillCode(),
-                        transformProps.getChildOrgId());
+                        transformProps.getChildOrgId(),
+                        transformProps.getLineNo());
             }
 
             // New flow: create canvas dataflow -> get version -> update with blocks+schedule -> post-hook -> update concurrency
@@ -775,11 +775,12 @@ public class NifiMigrationService {
         private final String headerValue;
         private final String childTillCode;
         private final String childOrgId;
+        private final String lineNo;
 
         TransformContext(String recordGroupBySource, String jsltScript, String joltSpec,
-                        String groupSize, String sortHeaders, String alphabeticalSort,
-                        String attributionType, String attributionCode, String headerValue,
-                        String childTillCode, String childOrgId) {
+                         String groupSize, String sortHeaders, String alphabeticalSort,
+                         String attributionType, String attributionCode, String headerValue,
+                         String childTillCode, String childOrgId, String lineNo) {
             this.recordGroupBySource = recordGroupBySource;
             this.jsltScript = jsltScript;
             this.joltSpec = joltSpec;
@@ -791,6 +792,7 @@ public class NifiMigrationService {
             this.headerValue = headerValue;
             this.childTillCode = childTillCode;
             this.childOrgId = childOrgId;
+            this.lineNo = lineNo;
         }
 
         String getRecordGroupBySource() {
@@ -835,6 +837,10 @@ public class NifiMigrationService {
 
         String getChildOrgId() {
             return childOrgId;
+        }
+
+        String getLineNo() {
+            return lineNo;
         }
     }
 }

@@ -26,6 +26,7 @@ public class TransformFlowProperties {
     private String childTillCode;
     private String childOrgId;
     private String joltSpec;
+    private String lineNo;
 
     public String getHeaderMappingJson() {
         return headerMappingJson;
@@ -73,6 +74,14 @@ public class TransformFlowProperties {
 
     public void setRecordGroupBy(String recordGroupBy) {
         this.recordGroupBy = recordGroupBy;
+    }
+
+    public String getLineNo() {
+        return lineNo;
+    }
+
+    public void setLineNo(String lineNo) {
+        this.lineNo = lineNo;
     }
 
     public String getJoltSpec() {
