@@ -1,7 +1,13 @@
 package com.emigran.nifi.migration.client;
 
 import com.emigran.nifi.migration.config.MigrationProperties;
-import com.emigran.nifi.migration.model.*;
+import com.emigran.nifi.migration.model.ProcessedTimestampResponse;
+import com.emigran.nifi.migration.model.ProcessorConcurrencyRequest;
+import com.emigran.nifi.migration.model.Workspace;
+import com.emigran.nifi.migration.model.WorkspaceCreateRequest;
+import com.emigran.nifi.migration.model.DataflowDetail;
+import com.emigran.nifi.migration.model.DiyDataflowRequest;
+import com.emigran.nifi.migration.model.Schedule;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,5 +65,26 @@ public class NifiNewClient {
      */
     public void updateProcessorConcurrency(ProcessorConcurrencyRequest request) {
         client.put("/processors/concurrency", request, true, Void.class);
+    }
+
+    /**
+     * Gets the processed timestamp from the first ListSFTP processor in the dataflow (old system).
+     * GET /api/processors/list-sftp-processed-timestamp-by-dataflow?dataflowUuid={dataflowUuid}
+     *
+     * @param dataflowUuid old dataflow UUID
+     * @return processedTimestamp value, or null if not found or on error
+     */
+    public String getListSftpProcessedTimestampByDataflowUuid(String dataflowUuid) {
+        if (dataflowUuid == null || dataflowUuid.trim().isEmpty()) {
+            return null;
+        }
+        String path = "/processors/list-sftp-processed-timestamp-by-dataflow?dataflowUuid=" + dataflowUuid;
+        try {
+            ResponseEntity<ProcessedTimestampResponse> response = client.get(path, true, ProcessedTimestampResponse.class);
+            ProcessedTimestampResponse body = response != null ? response.getBody() : null;
+            return body != null ? body.getProcessedTimestamp() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

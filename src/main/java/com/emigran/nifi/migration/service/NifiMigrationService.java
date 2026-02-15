@@ -20,11 +20,14 @@ import com.emigran.nifi.migration.model.neo.VersionUpdateRequest;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
 import com.emigran.nifi.migration.service.FlowXmlConcurrencyExtractor.ProcessorConcurrencyInfo;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -236,7 +239,7 @@ public class NifiMigrationService {
             }
 
             log.info("[migrateDataflow] Building neo blocks from detail");
-            List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext);
+            List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
             String scheduleCron = getScheduleCron(detail);
 
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
@@ -431,12 +434,18 @@ public class NifiMigrationService {
         return new DiyDataflowRequest(detail.getName(), mapped);
     }
 
+    /** Old block types that map to sftp_read (first block may get Initial Listing Timestamp from API). */
+    private static final Set<String> SFTP_READ_LEGACY_TYPES = Collections.unmodifiableSet(new HashSet<>(
+            Arrays.asList("sftp_pull", "sftp_pull_tracing", "sftp_pull_1", "fetch_sftp")));
+
     /**
      * Builds the list of NeoBlock for the version update API from old dataflow detail.
      * Uses RulesMetas_cps.json for config property names/defaults and LEGACY_TO_NEW for block type mapping.
      * Expands transform_to_* into convert_csv_to_json, jslt_transform, jolt_transform when transformContext is set.
+     * When the first block is an SFTP read (sftp_pull, sftp_pull_tracing, sftp_pull_1, fetch_sftp), fetches
+     * processed timestamp from the glue API by old dataflow UUID and sets "Initial Listing Timestamp (Migration)" on the new block.
      */
-    private List<NeoBlock> buildNeoBlocks(DataflowDetail detail, TransformContext transformContext) {
+    private List<NeoBlock> buildNeoBlocks(DataflowDetail detail, TransformContext transformContext, String oldDataflowUuid) {
         List<Block> blocks = detail.getBlocks() == null ? Collections.emptyList() : detail.getBlocks();
         List<BlockOrderEntry> ordered = new ArrayList<>();
 
@@ -460,6 +469,25 @@ public class NifiMigrationService {
         }
         ordered.sort((a, b) -> Integer.compare(a.order, b.order));
 
+        // When first block is SFTP read, fetch processed timestamp from glue API (old dataflow) for migration
+        String sftpInitialListingTimestamp = null;
+        if (!ordered.isEmpty() && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
+            BlockOrderEntry first = ordered.get(0);
+            if ("sftp_read".equals(first.newType) && first.oldBlock.getType() != null
+                    && SFTP_READ_LEGACY_TYPES.contains(first.oldBlock.getType())) {
+                try {
+                    sftpInitialListingTimestamp = newClient.getListSftpProcessedTimestampByDataflowUuid(oldDataflowUuid.trim());
+                    if (sftpInitialListingTimestamp != null) {
+                        log.info("[buildNeoBlocks] First block is SFTP read ({}), set Initial Listing Timestamp (Migration) from API: {}",
+                                first.oldBlock.getType(), sftpInitialListingTimestamp);
+                    }
+                } catch (Exception ex) {
+                    log.warn("[buildNeoBlocks] Failed to fetch SFTP processed timestamp for dataflow {}: {}",
+                            oldDataflowUuid, ex.getMessage());
+                }
+            }
+        }
+
         List<NeoBlock> out = new ArrayList<>();
         int positionX = 0;
         for (int i = 0; i < ordered.size(); i++) {
@@ -476,6 +504,9 @@ public class NifiMigrationService {
                 fillConfigFromTransformContext(config, e.transformPart, transformContext);
             } else if (e.oldBlock.getFields() != null) {
                 fillConfigFromFields(config, e.oldBlock.getFields());
+            }
+            if (i == 0 && "sftp_read".equals(e.newType) && sftpInitialListingTimestamp != null) {
+                config.put("initialTimestamp", sftpInitialListingTimestamp);
             }
             neo.setConfig(config);
 
@@ -664,6 +695,8 @@ public class NifiMigrationService {
         mapping.put("s3_push", "s3_write");
         mapping.put("intouch_transaction_v2", "http_write");
         mapping.put("sftp_pull", "sftp_read");
+        mapping.put("sftp_pull_tracing", "sftp_read");
+        mapping.put("sftp_pull_1", "sftp_read");
         mapping.put("s3_pull", "s3_read");
         mapping.put("ftp_push", "sftp_write");
         mapping.put("sftp_push", "sftp_write");
