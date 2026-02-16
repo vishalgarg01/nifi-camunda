@@ -80,7 +80,7 @@ public class NifiNewClient {
         }
         String path = "/processors/list-sftp-processed-timestamp-by-dataflow?dataflowUuid=" + dataflowUuid;
         try {
-            ResponseEntity<ProcessedTimestampResponse> response = client.get(path, true, ProcessedTimestampResponse.class);
+            ResponseEntity<ProcessedTimestampResponse> response = client.get(path, false, ProcessedTimestampResponse.class);
             ProcessedTimestampResponse body = response != null ? response.getBody() : null;
             return body != null ? body.getProcessedTimestamp() : null;
         } catch (Exception e) {
