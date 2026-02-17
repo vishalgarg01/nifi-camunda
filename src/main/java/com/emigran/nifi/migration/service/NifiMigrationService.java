@@ -76,11 +76,11 @@ public class NifiMigrationService {
 
     /**
      * Runs migration. If workspaceId is provided, only that workspace is migrated; otherwise all
-     * enabled workspaces. If both workspaceId and dataflowId are provided, only that dataflow in
-     * that workspace is migrated; otherwise all live dataflows in the selected workspace(s).
+     * enabled workspaces. If both workspaceId and dataflowId are provided, only that dataflow (or
+     * those dataflows) in that workspace are migrated; otherwise all live dataflows in the selected workspace(s).
      *
      * @param workspaceId optional; workspace id (Long as string) or name to migrate; null = all
-     * @param dataflowId  optional; dataflow UUID to migrate; only used when workspaceId is set; null = all
+     * @param dataflowId  optional; single dataflow UUID, or comma-separated list of dataflow UUIDs to migrate; only used when workspaceId is set; null = all
      * @return path to the migration result log
      */
     public String migrateAll(String workspaceId, String dataflowId) {
@@ -133,13 +133,20 @@ public class NifiMigrationService {
 
         List<DataflowSummary> liveDataflows;
         if (dataflowIdFilter != null && !dataflowIdFilter.trim().isEmpty()) {
-            DataflowDetail single = oldClient.getDataflowDetail(workspace.getId(), dataflowIdFilter.trim());
-            if (single == null) {
-                log.warn("[migrateWorkspace] Dataflow not found: workspaceId={}, dataflowUuid={}", workspace.getId(), dataflowIdFilter);
-                liveDataflows = Collections.emptyList();
-            } else {
-                liveDataflows = Collections.singletonList(single);
+            List<String> dataflowUuids = Arrays.stream(dataflowIdFilter.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            List<DataflowSummary> resolved = new ArrayList<>();
+            for (String uuid : dataflowUuids) {
+                DataflowDetail detail = oldClient.getDataflowDetail(workspace.getId(), uuid);
+                if (detail == null) {
+                    log.warn("[migrateWorkspace] Dataflow not found: workspaceId={}, dataflowUuid={}", workspace.getId(), uuid);
+                } else {
+                    resolved.add(detail);
+                }
             }
+            liveDataflows = resolved;
         } else {
             log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
             liveDataflows = oldClient.getDataflows(workspace.getId())
@@ -179,7 +186,7 @@ public class NifiMigrationService {
             boolean isTransform = isTransformFlow(detail);
             if (isTransform) {
                 Block transformBlock = detail.getBlocks().stream()
-                        .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
+                        .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")) || b.getType().startsWith("transfrom_csv_to_rewards"))
                         .findFirst()
                         .orElse(null);
                 String blockNamePrefix = transformBlock != null ? transformBlock.getName() : null;
