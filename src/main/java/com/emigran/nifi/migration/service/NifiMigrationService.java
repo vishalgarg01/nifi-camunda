@@ -520,6 +520,15 @@ public class NifiMigrationService {
             }
         }
 
+        // If there is a transform block, read fileDelimiter from it; when not comma, we will set it on the source block (first block)
+        String fileDelimiterFromTransform = null;
+        if (transformBlock != null && transformBlock.getFields() != null) {
+            String fd = getFieldValueFromFields(transformBlock.getFields(), "fileDelimiter", "File Delimiter");
+            if (fd != null && !",".equals(fd.trim())) {
+                fileDelimiterFromTransform = fd.trim();
+            }
+        }
+
         List<NeoBlock> out = new ArrayList<>();
         int positionX = 0;
         for (int i = 0; i < ordered.size(); i++) {
@@ -539,6 +548,11 @@ public class NifiMigrationService {
             }
             if (i == 0 && "sftp_read".equals(e.newType) && sftpInitialListingTimestamp != null) {
                 config.put("initialTimestamp", sftpInitialListingTimestamp);
+            }
+            // If this is the source block (first block) and transform had fileDelimiter != comma, set it on the source block (e.g. sftp_read). Only set when this block's config supports fileDelimiter (so we don't add it to convert_csv_to_json when transform is first).
+            if (i == 0 && fileDelimiterFromTransform != null && config.containsKey("fileDelimiter")) {
+                config.put("fileDelimiter", fileDelimiterFromTransform);
+                log.debug("[buildNeoBlocks] Source block: set fileDelimiter from old transform block: {}", fileDelimiterFromTransform);
             }
             // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
             if (KAFKA_BLOCK_TYPES.contains(e.newType) && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
@@ -588,6 +602,24 @@ public class NifiMigrationService {
             this.oldBlock = oldBlock;
             this.transformPart = transformPart;
         }
+    }
+
+    /**
+     * Returns the value of the first field whose key or name (case-insensitive) matches one of the given keysOrNames.
+     */
+    private static String getFieldValueFromFields(List<Field> fields, String... keysOrNames) {
+        if (fields == null || keysOrNames == null || keysOrNames.length == 0) return null;
+        Set<String> match = new HashSet<>();
+        for (String k : keysOrNames) {
+            if (k != null && !k.isEmpty()) match.add(k.trim().toLowerCase());
+        }
+        for (Field f : fields) {
+            String v = f.getValue();
+            if (v == null) continue;
+            if (f.getKey() != null && match.contains(f.getKey().toLowerCase())) return v;
+            if (f.getName() != null && match.contains(f.getName().toLowerCase())) return v;
+        }
+        return null;
     }
 
     private void fillConfigFromFields(Map<String, Object> config, List<Field> fields) {
