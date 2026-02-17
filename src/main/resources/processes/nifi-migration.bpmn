@@ -59,16 +59,16 @@
           <dc:Bounds x="822" y="131" width="76" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
-        <dc:Bounds x="1082" y="122" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1079" y="165" width="42" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_Failure_di" bpmnElement="EndEvent_Failure">
         <dc:Bounds x="1122" y="292" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1124" y="335" width="34" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1142" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1139" y="165" width="42" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_Start_To_Migrate_di" bpmnElement="Flow_Start_To_Migrate">
@@ -84,7 +84,7 @@
       <bpmndi:BPMNEdge id="Flow_Gateway_To_Success_di" bpmnElement="Flow_Gateway_To_Success">
         <di:waypoint x="885" y="180" />
         <di:waypoint x="885" y="140" />
-        <di:waypoint x="1082" y="140" />
+        <di:waypoint x="1142" y="140" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="840" y="153" width="53" height="14" />
         </bpmndi:BPMNLabel>

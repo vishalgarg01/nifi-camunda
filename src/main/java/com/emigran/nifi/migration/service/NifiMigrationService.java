@@ -139,7 +139,12 @@ public class NifiMigrationService {
                     .collect(Collectors.toList());
             List<DataflowSummary> resolved = new ArrayList<>();
             for (String uuid : dataflowUuids) {
-                DataflowDetail detail = oldClient.getDataflowDetail(workspace.getId(), uuid);
+                DataflowDetail detail = new DataflowDetail();
+                try{
+                    detail = oldClient.getDataflowDetail(workspace.getId(), uuid);
+                } catch (Exception ex){
+                    log.warn("[migrateWorkspace] Dataflow not found: workspaceId={}, dataflowUuid={}", workspace.getId(), uuid);
+                }
                 if (detail == null) {
                     log.warn("[migrateWorkspace] Dataflow not found: workspaceId={}, dataflowUuid={}", workspace.getId(), uuid);
                 } else {
@@ -193,6 +198,7 @@ public class NifiMigrationService {
                 TransformFlowProperties transformProps = transformPropertiesExtractor.extract(summary.getUuid(), blockNamePrefix);
                 String jsltScript = null;
                 String recordGroupBySource = null;
+                String sortHeaderSource = null;
                 try {
                     if (transformProps.getHeaderMappingJson() != null && !transformProps.getHeaderMappingJson().isEmpty()) {
                         jsltScript = JsltMappingUtil.fromHeaderMappingWithExpressions(
@@ -207,6 +213,11 @@ public class NifiMigrationService {
                                 transformProps.getRecordGroupBy(),
                                 transformProps.getHeaderMappingJson());
                     }
+                    if (transformProps.getSortHeaders() != null && transformProps.getHeaderMappingJson() != null) {
+                        sortHeaderSource = JsltMappingUtil.resolveGroupByToSourceNames(
+                                transformProps.getSortHeaders(),
+                                transformProps.getHeaderMappingJson());
+                    }
                 } catch (Exception ex) {
                     log.error("[migrateDataflow] Transform JSLT/group-by generation failed: {}", ex.getMessage());
                     resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
@@ -218,7 +229,7 @@ public class NifiMigrationService {
                         jsltScript,
                         transformProps.getJoltSpec(),
                         transformProps.getGroupSize(),
-                        transformProps.getSortHeaders(),
+                        sortHeaderSource,
                         transformProps.getAlphabeticalSort(),
                         transformProps.getAttributionType(),
                         transformProps.getAttributionCode(),
@@ -251,6 +262,9 @@ public class NifiMigrationService {
 
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
             updateRequest.setBlocks(neoBlocks);
+            if(!scheduleCron.equalsIgnoreCase("0 0/5 * * * ?")){
+                scheduleCron = "0 0/5 * * * ?";
+            }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
             updateRequest.setTag("migration");
 
@@ -290,6 +304,13 @@ public class NifiMigrationService {
             log.info("[migrateDataflow] SUCCESS - dataflow={} -> neoDataflowId={}", summary.getName(), neoDataflowId);
             resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
                     "Migrated with neo dataflow id " + neoDataflowId);
+
+            try {
+                log.info("[migrateDataflow] Stopping old dataflow on source system: workspaceId={}, dataflowUuid={}", sourceWorkspace.getId(), summary.getUuid());
+                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
+            } catch (Exception stopEx) {
+                log.warn("[migrateDataflow] Failed to stop old dataflow (non-fatal): {}", stopEx.getMessage());
+            }
         } catch (Exception ex) {
             log.error("[migrateDataflow] FAILED - dataflow={}: {}", summary.getName(), ex.getMessage(), ex);
             resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(), "Migration failed", ex);

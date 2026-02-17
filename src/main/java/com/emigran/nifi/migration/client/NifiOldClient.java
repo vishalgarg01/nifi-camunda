@@ -53,4 +53,20 @@ public class NifiOldClient {
                 "/workspaces/" + workspaceId + "/dataflows/" + uuid, false, DataflowDetail.class);
         return response.getBody();
     }
+
+    /**
+     * Stops the given dataflow on the old (source) system.
+     * PUT /api/workspaces/{workspaceId}/dataflows/{dataflowUuid}/state/Stopped?time=...
+     *
+     * @param workspaceId  old workspace id
+     * @param dataflowUuid old dataflow UUID
+     */
+    public void stopDataflow(Long workspaceId, String dataflowUuid) {
+        if (workspaceId == null || dataflowUuid == null || dataflowUuid.trim().isEmpty()) {
+            return;
+        }
+        long time = System.currentTimeMillis();
+        String path = "/workspaces/" + workspaceId + "/dataflows/" + dataflowUuid.trim() + "/state/Stopped?time=" + time;
+        client.put(path, null, false, Void.class);
+    }
 }
