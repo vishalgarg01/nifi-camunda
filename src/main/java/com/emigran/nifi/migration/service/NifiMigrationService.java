@@ -632,19 +632,37 @@ public class NifiMigrationService {
      * instead of resolving to the new workspace/dataflow and changing behaviour.
      */
     private void resolveWorkspaceUuidInConfig(Map<String, Object> config, String oldDataflowUuid) {
-        if (config == null || oldDataflowUuid == null) return;
+        if (config == null || oldDataflowUuid == null) {
+            return;
+        }
+
         for (Map.Entry<String, Object> entry : config.entrySet()) {
             Object val = entry.getValue();
+
             if (val instanceof String) {
                 String s = (String) val;
-                if (s.contains("${workspaceUUID}") || s.contains("${workspaceUuid}")) {
-                    String resolved = s.replace("${workspaceUUID}", oldDataflowUuid).replace("${workspaceUuid}", oldDataflowUuid);
+
+                String lower = s.toLowerCase();
+                if (lower.contains("${workspaceuuid}")) {
+
+                    String resolved = s.replaceAll(
+                            "(?i)\\$\\{workspaceuuid\\}",
+                            oldDataflowUuid
+                    );
+
                     config.put(entry.getKey(), resolved);
-                    log.debug("[resolveWorkspaceUuidInConfig] Resolved config key {}: {} -> {}", entry.getKey(), s, resolved);
+
+                    log.debug(
+                            "[resolveWorkspaceUuidInConfig] Resolved config key {}: {} -> {}",
+                            entry.getKey(),
+                            s,
+                            resolved
+                    );
                 }
             }
         }
     }
+
 
     private Map<String, String> buildVariableConfigKeyMap(Map<String, Object> config, List<Field> fields) {
         if (fields == null) return Collections.emptyMap();
