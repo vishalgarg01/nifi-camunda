@@ -445,6 +445,10 @@ public class NifiMigrationService {
     private static final Set<String> SFTP_READ_LEGACY_TYPES = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("sftp_pull", "sftp_pull_tracing", "sftp_pull_1", "fetch_sftp")));
 
+    /** Block types (new type names) that are Kafka blocks. For these, ${workspaceUuid} / ${workspaceUUID} in config is resolved to old dataflow UUID so consumer group id stays unchanged after migration. */
+    private static final Set<String> KAFKA_BLOCK_TYPES = Collections.unmodifiableSet(new HashSet<>(
+            Arrays.asList("kafka_topic_read","event_notification_read", "kafka_topic_write")));
+
     /**
      * Builds the list of NeoBlock for the version update API from old dataflow detail.
      * Uses RulesMetas_cps.json for config property names/defaults and LEGACY_TO_NEW for block type mapping.
@@ -514,6 +518,10 @@ public class NifiMigrationService {
             }
             if (i == 0 && "sftp_read".equals(e.newType) && sftpInitialListingTimestamp != null) {
                 config.put("initialTimestamp", sftpInitialListingTimestamp);
+            }
+            // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
+            if (KAFKA_BLOCK_TYPES.contains(e.newType) && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
+                resolveWorkspaceUuidInConfig(config, oldDataflowUuid.trim());
             }
             neo.setConfig(config);
 
@@ -618,6 +626,26 @@ public class NifiMigrationService {
         if (config.containsKey(key)) config.put(key, value);
     }
 
+    /**
+     * Replaces ${workspaceUUID} and ${workspaceUuid} in config string values with the resolved old dataflow UUID.
+     * Used for Kafka blocks so that consumer group id (and similar props) keep the same value after migration
+     * instead of resolving to the new workspace/dataflow and changing behaviour.
+     */
+    private void resolveWorkspaceUuidInConfig(Map<String, Object> config, String oldDataflowUuid) {
+        if (config == null || oldDataflowUuid == null) return;
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            Object val = entry.getValue();
+            if (val instanceof String) {
+                String s = (String) val;
+                if (s.contains("${workspaceUUID}") || s.contains("${workspaceUuid}")) {
+                    String resolved = s.replace("${workspaceUUID}", oldDataflowUuid).replace("${workspaceUuid}", oldDataflowUuid);
+                    config.put(entry.getKey(), resolved);
+                    log.debug("[resolveWorkspaceUuidInConfig] Resolved config key {}: {} -> {}", entry.getKey(), s, resolved);
+                }
+            }
+        }
+    }
+
     private Map<String, String> buildVariableConfigKeyMap(Map<String, Object> config, List<Field> fields) {
         if (fields == null) return Collections.emptyMap();
         Map<String, String> varMap = new HashMap<>();
@@ -718,11 +746,11 @@ public class NifiMigrationService {
         mapping.put("intouch_transaction_v2_1", "http_write");
         mapping.put("retro_destination", "http_write");
         mapping.put("neo_transformer", "neo_block");
-        mapping.put("kafka_connect_to_source", "kafka_read");
+        mapping.put("kafka_connect_to_source", "kafka_topic_read");
         mapping.put("csv_json_neo_transformer", "convert_csv_to_json");
         mapping.put("neo_transformer_iteration", "neo_block_loop");
         mapping.put("hash_csv_fields", "hash_csv_columns");
-        mapping.put("kafka_connect_to_source_tracing", "kafka_read");
+        mapping.put("kafka_connect_to_source_tracing", "kafka_topic_read");
         mapping.put("csv_json_neo_transformer_v2", "convert_csv_to_json");
         mapping.put("neo_transformer_v2", "neo_block");
         mapping.put("json_split", "split_json");
