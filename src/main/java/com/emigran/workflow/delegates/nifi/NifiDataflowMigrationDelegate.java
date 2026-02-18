@@ -36,6 +36,9 @@ public class NifiDataflowMigrationDelegate implements JavaDelegate {
         String logPath = migrationService.migrateAll(workspaceId, dataflowId);
         String summaryPath = resultLogger.writeSummary();
         boolean hasFailures = resultLogger.hasFailures();
+        if (hasFailures) {
+            resultLogger.logFailedDataflowsToAppLog();
+        }
         execution.setVariable("migrationLogPath", logPath);
         execution.setVariable("migrationSummaryPath", summaryPath != null ? summaryPath : "");
         execution.setVariable("migrationHasFailures", hasFailures);

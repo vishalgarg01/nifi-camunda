@@ -110,8 +110,15 @@ public class NifiMigrationService {
                 log.warn("[migrateAll] Skipping disabled workspace: {} (id={})", ws.getName(), ws.getId());
                 continue;
             }
-            log.info("[migrateAll] Migrating workspace: {} (id={})", ws.getName(), ws.getId());
-            migrateWorkspace(ws, dataflowId);
+            try {
+                log.info("[migrateAll] Migrating workspace: {} (id={})", ws.getName(), ws.getId());
+                migrateWorkspace(ws, dataflowId);
+            } catch (Throwable t) {
+                log.error("[migrateAll] Workspace {} (id={}) failed, continuing with next: {}",
+                        ws.getName(), ws.getId(), t.getMessage(), t);
+                resultLogger.logFailure(ws.getName(), "(workspace)", null,
+                        "Workspace migration failed: " + (t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName()), t);
+            }
         }
         String path = resultLogger.getOutputPath();
         log.info("[migrateAll] END - result log at {}", path);
@@ -162,7 +169,14 @@ public class NifiMigrationService {
         log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", liveDataflows.size());
 
         for (DataflowSummary summary : liveDataflows) {
-            migrateDataflow(workspace, summary);
+            try {
+                migrateDataflow(workspace, summary);
+            } catch (Throwable t) {
+                log.error("[migrateWorkspace] Unexpected error migrating dataflow {} (uuid={}), continuing with next: {}",
+                        summary.getName(), summary.getUuid(), t.getMessage(), t);
+                resultLogger.logFailure(workspace.getName(), summary.getName(), summary.getUuid(),
+                        "Unexpected error: " + (t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName()), t);
+            }
         }
         log.info("[migrateWorkspace] END - workspace={}", workspace.getName());
     }
@@ -290,7 +304,7 @@ public class NifiMigrationService {
             updateProcessorConcurrencyFromFlowXml(summary.getUuid(), detail, neoDataflowId, versionId, newDataflowForConcurrency);
 
             log.info("[migrateDataflow] Starting version in nifi");
-//            neoRuleApiClient.startVersion(neoDataflowId, versionId);
+            neoRuleApiClient.startVersion(neoDataflowId, versionId);
 
             log.info("[migrateDataflow] Sending for approval");
             neoRuleApiClient.sendForApproval(neoDataflowId, versionId);

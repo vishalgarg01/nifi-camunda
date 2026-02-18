@@ -109,6 +109,28 @@ public class MigrationResultLogger {
     }
 
     /**
+     * Logs all failed dataflows to the application log so they are visible in the run output.
+     * Call after migration completes when hasFailures() is true.
+     */
+    public synchronized void logFailedDataflowsToAppLog() {
+        if (failed.isEmpty()) {
+            return;
+        }
+        log.warn("Migration had {} failed dataflow(s):", failed.size());
+        for (Map<String, Object> entry : failed) {
+            String workspace = String.valueOf(entry.get("workspace"));
+            String dataflow = String.valueOf(entry.get("dataflow"));
+            String uuid = entry.get("dataflowUuid") != null ? String.valueOf(entry.get("dataflowUuid")) : null;
+            String message = entry.get("message") != null ? String.valueOf(entry.get("message")) : "";
+            if (uuid != null && !"null".equals(uuid)) {
+                log.warn("  - workspace={}, dataflow={}, uuid={}, reason={}", workspace, dataflow, uuid, message);
+            } else {
+                log.warn("  - workspace={}, dataflow={}, reason={}", workspace, dataflow, message);
+            }
+        }
+    }
+
+    /**
      * Writes a summary JSON file with succeeded and failed dataflows, then returns its path.
      * File contains: { "succeeded": [...], "failed": [...], "logFile": "...", "summary": { "totalSucceeded", "totalFailed" } }
      */
