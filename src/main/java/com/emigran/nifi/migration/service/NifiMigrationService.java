@@ -227,7 +227,7 @@ public class NifiMigrationService {
                                 transformProps.getRecordGroupBy(),
                                 transformProps.getHeaderMappingJson());
                     }
-                    if (transformProps.getSortHeaders() != null && transformProps.getHeaderMappingJson() != null) {
+                    if (!isEmptyOrEmptyJson(transformProps.getSortHeaders()) && transformProps.getHeaderMappingJson() != null) {
                         sortHeaderSource = JsltMappingUtil.resolveGroupByToSourceNames(
                                 transformProps.getSortHeaders(),
                                 transformProps.getHeaderMappingJson());
@@ -242,7 +242,7 @@ public class NifiMigrationService {
                         recordGroupBySource,
                         jsltScript,
                         transformProps.getJoltSpec(),
-                        transformProps.getGroupSize(),
+                        emptyJsonToNull(transformProps.getGroupSize()),
                         sortHeaderSource,
                         transformProps.getAlphabeticalSort(),
                         transformProps.getAttributionType(),
@@ -685,8 +685,8 @@ public class NifiMigrationService {
     private void fillConfigFromTransformContext(Map<String, Object> config, String part, TransformContext ctx) {
         if ("csv".equals(part)) {
             if (ctx.getRecordGroupBySource() != null) putByKey(config, "groupBy", ctx.getRecordGroupBySource());
-            if (ctx.getGroupSize() != null) putByKey(config, "groupSize", parseNumber(ctx.getGroupSize()));
-            if (ctx.getSortHeaders() != null) putByKey(config, "sortHeaders", ctx.getSortHeaders());
+            if (!isEmptyOrEmptyJson(ctx.getGroupSize())) putByKey(config, "groupSize", parseNumber(ctx.getGroupSize()));
+            if (!isEmptyOrEmptyJson(ctx.getSortHeaders())) putByKey(config, "sortHeaders", ctx.getSortHeaders());
             if (ctx.getAlphabeticalSort() != null) putByKey(config, "alphabeticalSort", "true".equalsIgnoreCase(ctx.getAlphabeticalSort()));
             if (ctx.getAttributionType() != null) putByKey(config, "attribution_type", ctx.getAttributionType());
             if (ctx.getAttributionCode() != null) putByKey(config, "attribution_code", ctx.getAttributionCode());
@@ -702,6 +702,18 @@ public class NifiMigrationService {
 
     private void putByKey(Map<String, Object> config, String key, Object value) {
         if (config.containsKey(key)) config.put(key, value);
+    }
+
+    /** Treats null, empty string, or "{}" as empty so we don't push {} into config (breaks sorting). */
+    private static boolean isEmptyOrEmptyJson(String value) {
+        if (value == null) return true;
+        String t = value.trim();
+        return t.isEmpty() || "{}".equals(t);
+    }
+
+    /** Returns null when value is null, empty, or "{}"; otherwise returns value. */
+    private static String emptyJsonToNull(String value) {
+        return isEmptyOrEmptyJson(value) ? null : value;
     }
 
     /**
@@ -899,10 +911,10 @@ public class NifiMigrationService {
                 if (ctx.getRecordGroupBySource() != null) {
                     setFieldValueByKeyword(block.getFields(), new String[]{"Record Group By", "recordGroupBy", "groupBy"}, ctx.getRecordGroupBySource());
                 }
-                if (ctx.getGroupSize() != null) {
+                if (!isEmptyOrEmptyJson(ctx.getGroupSize())) {
                     setFieldValueByKeyword(block.getFields(), new String[]{"groupSize", "Minimum Group Record", "Minimum Group Records"}, ctx.getGroupSize());
                 }
-                if (ctx.getSortHeaders() != null) {
+                if (!isEmptyOrEmptyJson(ctx.getSortHeaders())) {
                     setFieldValueByKeyword(block.getFields(), new String[]{"sortHeaders", "Sort Headers"}, ctx.getSortHeaders());
                 }
                 if (ctx.getAlphabeticalSort() != null) {

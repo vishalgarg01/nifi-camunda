@@ -115,7 +115,11 @@ public final class JsltMappingUtil {
             i++;
         }
         sb.append("}");
-        return sb.toString();
+        String innerTransform = sb.toString();
+        // When input is an array (e.g. [{ "First Name": "...", "Last Name": "..." }]), apply transform to each element.
+        // When input is a single object, apply transform as-is.
+        // NiFi JSLT does not support type(); use is-array(.) per JSLT built-in functions.
+        return "if (is-array(.)) [ for (.) " + innerTransform + " ] else " + innerTransform;
     }
 
     static String parseValueToJslt(String value, String outputKey,
