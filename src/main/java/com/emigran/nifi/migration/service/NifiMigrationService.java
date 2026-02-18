@@ -17,6 +17,8 @@ import com.emigran.nifi.migration.model.neo.BlockPosition;
 import com.emigran.nifi.migration.model.neo.BlockRelation;
 import com.emigran.nifi.migration.model.neo.NeoBlock;
 import com.emigran.nifi.migration.model.neo.VersionUpdateRequest;
+import com.emigran.nifi.migration.util.JoltSpecUtil;
+import com.emigran.nifi.migration.util.JoltSpecUtil.JoltInputShape;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
 import com.emigran.nifi.migration.service.FlowXmlConcurrencyExtractor.ProcessorConcurrencyInfo;
 import java.util.ArrayList;
@@ -238,6 +240,10 @@ public class NifiMigrationService {
                             "Transform JSLT/group-by generation failed", ex);
                     return;
                 }
+                // When JOLT expects single object {} and group size is 1, CSV block should split response so each record is one JSON.
+                boolean splitResponse = transformProps.getJoltSpec() != null
+                        && "1".equals(transformProps.getGroupSize())
+                        && JoltSpecUtil.getExpectedInputShape(transformProps.getJoltSpec()) == JoltInputShape.OBJECT;
                 transformContext = new TransformContext(
                         recordGroupBySource,
                         jsltScript,
@@ -250,7 +256,8 @@ public class NifiMigrationService {
                         transformProps.getHeaderValue(),
                         transformProps.getChildTillCode(),
                         transformProps.getChildOrgId(),
-                        transformProps.getLineNo());
+                        transformProps.getLineNo(),
+                        splitResponse);
             }
 
             // New flow: create canvas dataflow -> get version -> update with blocks+schedule -> post-hook -> update concurrency
@@ -568,8 +575,8 @@ public class NifiMigrationService {
                 config.put("initialTimestamp", sftpInitialListingTimestamp);
             }
             // If this is the source block (first block) and transform had fileDelimiter != comma, set it on the source block (e.g. sftp_read). Only set when this block's config supports fileDelimiter (so we don't add it to convert_csv_to_json when transform is first).
-            if (i == 0 && fileDelimiterFromTransform != null && config.containsKey("fileDelimiter")) {
-                config.put("fileDelimiter", fileDelimiterFromTransform);
+            if (i == 0 && fileDelimiterFromTransform != null && config.containsKey("File Delimiter")) {
+                config.put("File Delimiter", fileDelimiterFromTransform);
                 log.debug("[buildNeoBlocks] Source block: set fileDelimiter from old transform block: {}", fileDelimiterFromTransform);
             }
             // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
@@ -688,6 +695,7 @@ public class NifiMigrationService {
             if (!isEmptyOrEmptyJson(ctx.getGroupSize())) putByKey(config, "groupSize", parseNumber(ctx.getGroupSize()));
             if (!isEmptyOrEmptyJson(ctx.getSortHeaders())) putByKey(config, "sortHeaders", ctx.getSortHeaders());
             if (ctx.getAlphabeticalSort() != null) putByKey(config, "alphabeticalSort", "true".equalsIgnoreCase(ctx.getAlphabeticalSort()));
+            if (ctx.getSplitResponse()) config.put("split response", "true");
             if (ctx.getAttributionType() != null) putByKey(config, "attribution_type", ctx.getAttributionType());
             if (ctx.getAttributionCode() != null) putByKey(config, "attribution_code", ctx.getAttributionCode());
             if (ctx.getHeaderValue() != null) putByKey(config, "header_value", ctx.getHeaderValue());
@@ -917,6 +925,9 @@ public class NifiMigrationService {
                 if (!isEmptyOrEmptyJson(ctx.getSortHeaders())) {
                     setFieldValueByKeyword(block.getFields(), new String[]{"sortHeaders", "Sort Headers"}, ctx.getSortHeaders());
                 }
+                if (ctx.getSplitResponse()) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"splitResponse", "Split Response", "split response"}, "true");
+                }
                 if (ctx.getAlphabeticalSort() != null) {
                     setFieldValueByKeyword(block.getFields(), new String[]{"alphabeticalSort", "Use Alphabetical Sort"}, ctx.getAlphabeticalSort());
                 }
@@ -971,11 +982,13 @@ public class NifiMigrationService {
         private final String childTillCode;
         private final String childOrgId;
         private final String lineNo;
+        private final boolean splitResponse;
 
         TransformContext(String recordGroupBySource, String jsltScript, String joltSpec,
                          String groupSize, String sortHeaders, String alphabeticalSort,
                          String attributionType, String attributionCode, String headerValue,
-                         String childTillCode, String childOrgId, String lineNo) {
+                         String childTillCode, String childOrgId, String lineNo,
+                         boolean splitResponse) {
             this.recordGroupBySource = recordGroupBySource;
             this.jsltScript = jsltScript;
             this.joltSpec = joltSpec;
@@ -988,6 +1001,7 @@ public class NifiMigrationService {
             this.childTillCode = childTillCode;
             this.childOrgId = childOrgId;
             this.lineNo = lineNo;
+            this.splitResponse = splitResponse;
         }
 
         String getRecordGroupBySource() {
@@ -1036,6 +1050,10 @@ public class NifiMigrationService {
 
         String getLineNo() {
             return lineNo;
+        }
+
+        boolean getSplitResponse() {
+            return splitResponse;
         }
     }
 }
