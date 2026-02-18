@@ -470,6 +470,10 @@ public class NifiMigrationService {
     private static final Set<String> KAFKA_BLOCK_TYPES = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("kafka_topic_read","event_notification_read", "kafka_topic_write")));
 
+    /** Kafka connection service IDs: chosen from old block's kafkaBrokers value (event vs connect). */
+    private static final String KAFKA_CONNECTION_EVENT = "e82c0901-019a-1000-0000-000024383183";
+    private static final String KAFKA_CONNECTION_CONNECT = "e4019edc-019a-1000-0000-0000394c142c";
+
     /**
      * Builds the list of NeoBlock for the version update API from old dataflow detail.
      * Uses RulesMetas_cps.json for config property names/defaults and LEGACY_TO_NEW for block type mapping.
@@ -557,6 +561,13 @@ public class NifiMigrationService {
             // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
             if (KAFKA_BLOCK_TYPES.contains(e.newType) && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
                 resolveWorkspaceUuidInConfig(config, oldDataflowUuid.trim());
+            }
+            // For Kafka blocks, set kafkaConnectionService from old block's kafkaBrokers: "event" -> event connection, "connect" -> connect connection (match anywhere in value)
+            if (KAFKA_BLOCK_TYPES.contains(e.newType) && e.oldBlock.getFields() != null) {
+                String kafkaConnectionId = resolveKafkaConnectionFromOldBlock(e.oldBlock.getFields());
+                if (kafkaConnectionId != null) {
+                    config.put("kafkaConnectionService", kafkaConnectionId);
+                }
             }
             neo.setConfig(config);
 
@@ -716,6 +727,25 @@ public class NifiMigrationService {
         }
     }
 
+    /**
+     * Resolves kafkaConnectionService ID from old block's kafkaBrokers property.
+     * If the value contains "event" (anywhere), returns the event connection ID;
+     * if it contains "connect" (anywhere), returns the connect connection ID; otherwise null.
+     */
+    private String resolveKafkaConnectionFromOldBlock(List<Field> fields) {
+        String kafkaBrokers = getFieldValueFromFields(fields, "kafkaBrokers", "Kafka Brokers");
+        if (kafkaBrokers == null || kafkaBrokers.trim().isEmpty()) {
+            return null;
+        }
+        String lower = kafkaBrokers.trim().toLowerCase();
+        if (lower.contains("connect")) {
+            return KAFKA_CONNECTION_CONNECT;
+        }
+        if (lower.contains("event")) {
+            return KAFKA_CONNECTION_EVENT;
+        }
+        return null;
+    }
 
     private Map<String, String> buildVariableConfigKeyMap(Map<String, Object> config, List<Field> fields) {
         if (fields == null) return Collections.emptyMap();
