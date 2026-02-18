@@ -132,7 +132,7 @@
           "uiSchema": {
             "customComponent": "ConfigManagerSelect"
           }
-        },
+        }
       },
       "required": [
         "hostname",
