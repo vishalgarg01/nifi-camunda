@@ -207,7 +207,7 @@ public class NifiMigrationService {
             boolean isTransform = isTransformFlow(detail);
             if (isTransform) {
                 Block transformBlock = detail.getBlocks().stream()
-                        .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")) || b.getType().startsWith("transfrom_csv_to_rewards"))
+                        .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")) || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue"))
                         .findFirst()
                         .orElse(null);
                 String blockNamePrefix = transformBlock != null ? transformBlock.getName() : null;
@@ -429,58 +429,7 @@ public class NifiMigrationService {
             return false;
         }
         return detail.getBlocks().stream()
-                .anyMatch(b -> b.getType() != null && b.getType().startsWith("transform_to_"));
-    }
-
-    /**
-     * Builds DIY request for a transform flow: replaces the single transform_to_* block with
-     * convert_csv_to_json(72), jslt_transform(100), jolt_transform(101). Blocks after the
-     * transform get blockOrder increased by 2.
-     */
-    private DiyDataflowRequest buildDiyRequestForTransform(DataflowDetail detail, TransformContext transformContext) {
-        log.debug("[buildDiyRequestForTransform] Building DIY request with transform replacement blocks");
-        List<Block> blocks = detail.getBlocks() == null ? Collections.emptyList() : detail.getBlocks();
-        Block transformBlock = blocks.stream()
-                .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
-                .findFirst()
-                .orElse(null);
-        if (transformBlock == null) {
-            return buildDiyRequest(detail);
-        }
-        int transformOrder = transformBlock.getOrder();
-        String baseName = transformBlock.getName();
-
-        List<DiyBlockRequest> out = new ArrayList<>();
-        for (Block b : blocks) {
-            if (b.getType() != null && b.getType().startsWith("transform_to_")) {
-                out.add(diyBlock(baseName + "-csv", "convert_csv_to_json", transformOrder, CONVERT_CSV_TO_JSON_BLOCK_ID));
-                out.add(diyBlock(baseName + "-jslt", "jslt_transform", transformOrder + 1, JSLT_TRANSFORM_BLOCK_ID));
-                out.add(diyBlock(baseName + "-jolt", "jolt_transform", transformOrder + 2, JOLT_TRANSFORM_BLOCK_ID));
-            } else if (b.getOrder() > transformOrder) {
-                DiyBlockRequest r = toDiyBlock(b);
-                r.setBlockOrder(b.getOrder() + 2);
-                out.add(r);
-            } else {
-                out.add(toDiyBlock(b));
-            }
-        }
-        return new DiyDataflowRequest(detail.getName(), out);
-    }
-
-    private DiyBlockRequest diyBlock(String name, String type, int order, int blockId) {
-        DiyBlockRequest req = new DiyBlockRequest();
-        req.setBlockName(name);
-        req.setBlockType(type);
-        req.setBlockOrder(order);
-        req.setBlockId(blockId);
-        return req;
-    }
-
-    private DiyDataflowRequest buildDiyRequest(DataflowDetail detail) {
-        log.debug("[buildDiyRequest] Building DIY request with {} blocks", detail.getBlocks() == null ? 0 : detail.getBlocks().size());
-        List<DiyBlockRequest> mapped = detail.getBlocks() == null ? Collections.emptyList() :
-                detail.getBlocks().stream().map(this::toDiyBlock).collect(Collectors.toList());
-        return new DiyDataflowRequest(detail.getName(), mapped);
+                .anyMatch(b -> b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue")));
     }
 
     /** Old block types that map to sftp_read (first block may get Initial Listing Timestamp from API). */
@@ -507,14 +456,14 @@ public class NifiMigrationService {
         List<BlockOrderEntry> ordered = new ArrayList<>();
 
         Block transformBlock = blocks.stream()
-                .filter(b -> b.getType() != null && b.getType().startsWith("transform_to_"))
+                .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue")))
                 .findFirst()
                 .orElse(null);
         int transformOrder = transformBlock != null ? transformBlock.getOrder() : -1;
         String baseName = transformBlock != null ? transformBlock.getName() : null;
 
         for (Block b : blocks) {
-            if (b.getType() != null && b.getType().startsWith("transform_to_")) {
+            if (b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") )) {
                 ordered.add(new BlockOrderEntry(baseName + "-csv", mapLegacyToNew("convert_csv_to_json"), transformOrder, b.isSource(), b, "csv"));
                 ordered.add(new BlockOrderEntry(baseName + "-jslt", "jslt_transform", transformOrder + 1, false, b, "jslt"));
                 ordered.add(new BlockOrderEntry(baseName + "-jolt", "jolt_transform", transformOrder + 2, false, b, "jolt"));
