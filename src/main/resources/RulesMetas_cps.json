@@ -2095,7 +2095,7 @@
           "title": "Output Filename",
           "default": "${filename}"
         },
-        "headerMapping": {
+        "headersMapping": {
           "type": "string",
           "title": "Header Mapping",
           "default": "{}"
@@ -2114,7 +2114,7 @@
         "outputHeadersOrder",
         "outputFileDelimiter",
         "outputFileName",
-        "headerMapping",
+        "headersMapping",
         "isHeaderless"
       ]
     }
