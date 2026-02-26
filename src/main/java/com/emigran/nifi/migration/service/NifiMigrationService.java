@@ -279,13 +279,14 @@ public class NifiMigrationService {
 
             log.info("[migrateDataflow] Building neo blocks from detail");
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
+//            applyHardcodedValuesForNeoBlocks(neoBlocks);
             String scheduleCron = getScheduleCron(detail);
 
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
             updateRequest.setBlocks(neoBlocks);
-            if(!scheduleCron.equalsIgnoreCase("0 0/5 * * * ?")){
-                scheduleCron = "0 0/5 * * * ?";
-            }
+//            if(!scheduleCron.equalsIgnoreCase("0 0/5 * * * ?")){
+//                scheduleCron = "0 0/5 * * * ?";
+//            }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
             updateRequest.setTag("migration");
 
@@ -328,7 +329,7 @@ public class NifiMigrationService {
 
             try {
                 log.info("[migrateDataflow] Stopping old dataflow on source system: workspaceId={}, dataflowUuid={}", sourceWorkspace.getId(), summary.getUuid());
-                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
+//                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
             } catch (Exception stopEx) {
                 log.warn("[migrateDataflow] Failed to stop old dataflow (non-fatal): {}", stopEx.getMessage());
             }
@@ -443,6 +444,12 @@ public class NifiMigrationService {
     /** Kafka connection service IDs: chosen from old block's kafkaBrokers value (event vs connect). */
     private static final String KAFKA_CONNECTION_EVENT = "e82c0901-019a-1000-0000-000024383183";
     private static final String KAFKA_CONNECTION_CONNECT = "e4019edc-019a-1000-0000-0000394c142c";
+
+    /** Alternative field keys/names from old dataflow that map to RulesMetas config keys (e.g. "headerMapping" vs "headersMapping" / "Rename Headers Mapping"). */
+    private static final Map<String, List<String>> CONFIG_KEY_FIELD_ALIASES = Collections.unmodifiableMap(
+            new HashMap<String, List<String>>() {{
+                put("headerMapping", Arrays.asList("headersMapping", "Rename Headers Mapping", "Header Mapping", "input.headerMapping", "input.headersMapping"));
+            }});
 
     /**
      * Builds the list of NeoBlock for the version update API from old dataflow detail.
@@ -585,6 +592,28 @@ public class NifiMigrationService {
         }
     }
 
+    /** Hardcoded config values for specific Neo block types, applied just before save. */
+    private void applyHardcodedValuesForNeoBlocks(List<NeoBlock> neoBlocks) {
+        if (neoBlocks == null) return;
+        for (NeoBlock neo : neoBlocks) {
+            if (neo.getConfig() == null) continue;
+            String type = neo.getType();
+            if ("http_write".equals(type)) {
+                neo.getConfig().put("clientKey", "3loyQH6YmB67mjZYchdgneU8V");
+                neo.getConfig().put("clientSecret", "GNnZBoFWwJGeTm2kYBjhVfoyfQtjBUm2djrhaywf");
+                neo.getConfig().put("apiEndPoint", "https://crm-nightly-new.cc.capillarytech.com");
+                neo.getConfig().put("oAuthBaseUrl", "https://crm-nightly-new.cc.capillarytech.com");
+
+            } else if ("sftp_read".equals(type)) {
+                neo.getConfig().put("username", "capillary");
+                neo.getConfig().put("password", "captech123");
+                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest1/source");
+                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest1/process");
+                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest1/error");
+            }
+        }
+    }
+
     /**
      * Returns the value of the first field whose key or name (case-insensitive) matches one of the given keysOrNames.
      */
@@ -614,6 +643,15 @@ public class NifiMigrationService {
         for (String configKey : config.keySet()) {
             String val = byKey.get(configKey.toLowerCase());
             if (val == null) val = byName.get(configKey.toLowerCase());
+            if (val == null && CONFIG_KEY_FIELD_ALIASES.containsKey(configKey)) {
+                for (String alias : CONFIG_KEY_FIELD_ALIASES.get(configKey)) {
+                    if (alias == null) continue;
+                    String aliasLower = alias.toLowerCase();
+                    val = byKey.get(aliasLower);
+                    if (val == null) val = byName.get(aliasLower);
+                    if (val != null) break;
+                }
+            }
             if (val != null) {
                 Object parsed = parseConfigValue(config.get(configKey), val);
                 config.put(configKey, parsed);
