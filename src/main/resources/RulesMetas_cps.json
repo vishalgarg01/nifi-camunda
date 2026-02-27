@@ -12,8 +12,9 @@
       "iconType": "sftp",
       "iconBackgroundColor": "#FFFFFF",
       "type": "sftp",
-      "label": "SFTP Read",
-      "tooltipText": "Poll SFTP server, download files by regex, validate, move them"
+      "label": "SFTP (Read)",
+      "tooltipText": "Poll SFTP server, download files by regex, validate, move them",
+      "order": 1
     },
     "config": {
       "type": "object",
@@ -134,6 +135,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Consume SFTP Files. Make changes only if you know what you are doing.",
+        "fields": ["private_key_path", "key_passphrase", "unzipFiles", "searchDirRecursively", "port", "File Delimiter", "Report Status Code"]
+      },
       "required": [
         "hostname",
         "username",
@@ -143,7 +150,8 @@
         "processedDirectory",
         "port",
         "File Delimiter",
-        "Report Status Code"
+        "Report Status Code",
+        "apiErrorFilePath"
       ]
     }
   },
@@ -160,8 +168,9 @@
       "iconType": "sftp",
       "iconBackgroundColor": "#FFFFFF",
       "type": "sftp",
-      "label": "SFTP Write",
-      "tooltipText": "Push files to SFTP server with optional file compression"
+      "label": "SFTP (Write)",
+      "tooltipText": "Push files to SFTP server with optional file compression",
+      "order": 2
     },
     "config": {
       "type": "object",
@@ -236,6 +245,17 @@
           "title": "Key passphrase"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for SFTP (Write). Make changes only if you know what you are doing.",
+        "fields": [
+          "port",
+          "outputFileName",
+          "private_key_path",
+          "key_passphrase"
+        ]
+      },
       "required": [
         "hostname",
         "username",
@@ -259,8 +279,9 @@
       "iconType": "s3",
       "iconBackgroundColor": "#FFFFFF",
       "type": "s3",
-      "label": "S3 Read",
-      "tooltipText": "Poll S3 bucket, downloads file in the path and moves file"
+      "label": "S3 (Read)",
+      "tooltipText": "Poll S3 bucket, downloads file in the path and moves file",
+      "order": 3
     },
     "config": {
       "type": "object",
@@ -350,6 +371,12 @@
           "default": ","
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Consume S3 Files",
+        "fields": []
+      },
       "required": [
         "s3BucketName",
         "s3InputPath",
@@ -371,8 +398,9 @@
       "iconType": "s3",
       "iconBackgroundColor": "#FFFFFF",
       "type": "s3",
-      "label": "S3 Write",
-      "tooltipText": "Put S3 Object"
+      "label": "S3 (Write)",
+      "tooltipText": "Put S3 Object",
+      "order": 4
     },
     "config": {
       "type": "object",
@@ -442,6 +470,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Upload to S3",
+        "fields": []
+      },
       "required": [
         "s3ObjectKey",
         "s3BucketName",
@@ -463,8 +497,9 @@
       "iconType": "kafka",
       "iconBackgroundColor": "#8B5CF6",
       "type": "kafka",
-      "label": "Kafka Topic Read",
-      "tooltipText": "Pulls data from a kafka topic"
+      "label": "Kafka (Read)",
+      "tooltipText": "Pulls data from a kafka topic",
+      "order": 5
     },
     "config": {
       "type": "object",
@@ -476,21 +511,22 @@
         "groupId": {
           "type": "string",
           "title": "Consumer Group Id",
-          "default": "${workspaceUUID}"
+          "default": "${neoDataflowId}"
         },
         "Header": {
           "type": "string",
           "title": "Headers as Attribute",
           "oneOf": [
             {
-              "const": "traceable_id",
-              "title": "Traceable Id"
-            },
-            {
               "const": ".*",
               "title": "All"
+            },
+            {
+              "const": "traceable_id",
+              "title": "Traceable Id"
             }
           ],
+          "default": ".*",
           "uiSchema": {
             "customComponent": "CapRadioGroup"
           }
@@ -518,6 +554,16 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Consume Kafka Topic",
+        "fields": [
+          "groupId",
+          "Header",
+          "Unique Id for tracing"
+        ]
+      },
       "required": [
         "topics",
         "groupId",
@@ -540,8 +586,9 @@
       "iconType": "kafka",
       "iconBackgroundColor": "#8B5CF6",
       "type": "kafka",
-      "label": "Kafka Topic Write",
-      "tooltipText": "Kafka push connect to destination"
+      "label": "Kafka (Write)",
+      "tooltipText": "Kafka push connect to destination",
+      "order": 6
     },
     "config": {
       "type": "object",
@@ -589,6 +636,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Publish to Kafka Topic",
+        "fields": []
+      },
       "required": [
         "kafkaConnectionService",
         "topics",
@@ -610,8 +663,9 @@
       "iconType": "json",
       "iconBackgroundColor": "#000000",
       "type": "transform",
-      "label": "Convert CSV to JSON",
-      "tooltipText": "CSV → JSON transformer with optional sorting/grouping"
+      "label": "Transform (CSV to JSON)",
+      "tooltipText": "CSV → JSON transformer with optional sorting/grouping",
+      "order": 7
     },
     "config": {
       "type": "object",
@@ -697,6 +751,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for CSV to JSON. Make changes only if you know what you are doing.",
+        "fields": ["attribution_type", "attribution_code", "header_value", "child_till_code", "child_org_id", "lineNos", "JsonPath Expression", "split response"]
+      },
       "required": [
         "fileType",
         "alphabeticalSort",
@@ -717,8 +777,9 @@
       "iconType": "xml",
       "iconBackgroundColor": "#FFFFFF",
       "type": "transform",
-      "label": "Convert CSV to XML",
-      "tooltipText": "CSV to XML block"
+      "label": "Transform (CSV to XML)",
+      "tooltipText": "CSV to XML block",
+      "order": 8
     },
     "config": {
       "type": "object",
@@ -744,6 +805,12 @@
           "title": "XML Bottom"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for CSV to XML",
+        "fields": []
+      },
       "required": [
         "xmlTop",
         "xmlFileName",
@@ -766,8 +833,9 @@
       "iconType": "open-lock",
       "iconBackgroundColor": "#10B981",
       "type": "decrypt",
-      "label": "Decrypt Content",
-      "tooltipText": "Decryption block for secure content"
+      "label": "PGP Decrypt",
+      "tooltipText": "Decryption block for secure content",
+      "order": 9
     },
     "config": {
       "type": "object",
@@ -803,6 +871,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for PGP Decrypt",
+        "fields": []
+      },
       "required": [
         "encryptAlgo",
         "privatekeyFile",
@@ -824,8 +898,9 @@
       "iconType": "closed-lock",
       "iconBackgroundColor": "#EF4444",
       "type": "encrypt",
-      "label": "Encrypt Content",
-      "tooltipText": "Encryption block"
+      "label": "PGP Encrypt",
+      "tooltipText": "Encryption block",
+      "order": 10
     },
     "config": {
       "type": "object",
@@ -861,6 +936,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for PGP Encrypt",
+        "fields": []
+      },
       "required": [
         "encryptAlgo",
         "publicKeyFile",
@@ -882,8 +963,9 @@
       "iconType": "databricks",
       "iconBackgroundColor": "#E62E71",
       "type": "validation",
-      "label": "Databricks Validation",
-      "tooltipText": "Data validation block that optionally triggers a Databricks job and uploads data to S3."
+      "label": "Databricks (Validation)",
+      "tooltipText": "Data validation block that optionally triggers a Databricks job and uploads data to S3.",
+      "order": 11
     },
     "config": {
       "type": "object",
@@ -901,6 +983,12 @@
           "title": "Is Data Validation enabled?",
           "default": false
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Databricks Data Validation",
+        "fields": []
       },
       "required": [
         "isEnabled"
@@ -920,8 +1008,9 @@
       "iconType": "databricks",
       "iconBackgroundColor": "#E62E71",
       "type": "databricks",
-      "label": "Databricks Job Trigger And Status Check",
-      "tooltipText": "Databricks block"
+      "label": "Databricks (Jobs)",
+      "tooltipText": "Databricks block",
+      "order": 12
     },
     "config": {
       "type": "object",
@@ -951,6 +1040,12 @@
           "title": "dataBricksUrl"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Trigger Databricks Job & Check Status",
+        "fields": []
+      },
       "required": [
         "jobId",
         "maxRetries",
@@ -973,8 +1068,9 @@
       "iconType": "filter",
       "iconBackgroundColor": "#8B5CF6",
       "type": "filter",
-      "label": "Filter On Condition",
-      "tooltipText": "Filters data based on conditions"
+      "label": "Filter",
+      "tooltipText": "Filters data based on conditions",
+      "order": 13
     },
     "config": {
       "type": "object",
@@ -985,6 +1081,12 @@
           "default": "${header_value:notNull()}",
           "minLength": 5
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Filter by Condition",
+        "fields": []
       },
       "required": [
         "filterCondition"
@@ -1004,8 +1106,9 @@
       "iconType": "filter",
       "iconBackgroundColor": "#8B5CF6",
       "type": "filter",
-      "label": "Filter On Condition Hidden",
-      "tooltipText": "Filters data based on condition hidden"
+      "label": "Filter (Hidden)",
+      "tooltipText": "Filters data based on condition hidden",
+      "order": 14
     },
     "config": {
       "type": "object",
@@ -1016,6 +1119,12 @@
           "default": "${header_value:equals('true'):or(${header_value:isEmpty()})}",
           "minLength": 5
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Filter by Condition (Hidden)",
+        "fields": []
       },
       "required": [
         "filterCondition"
@@ -1035,8 +1144,9 @@
       "iconType": "two-join",
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
-      "label": "Two Join",
-      "tooltipText": "Join two files based on specified headers"
+      "label": "Join files (2)",
+      "tooltipText": "Join two files based on specified headers",
+      "order": 15
     },
     "config": {
       "type": "object",
@@ -1150,6 +1260,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Join Two Files",
+        "fields": []
+      },
       "required": [
         "joinType",
         "filesDelimiter",
@@ -1175,8 +1291,9 @@
       "iconType": "three-join",
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
-      "label": "Three Join",
-      "tooltipText": "Join three files based on specified headers"
+      "label": "Join files (3)",
+      "tooltipText": "Join three files based on specified headers",
+      "order": 16
     },
     "config": {
       "type": "object",
@@ -1299,6 +1416,12 @@
           "title": "Use Alphabetical Sort"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Join Three Files",
+        "fields": []
+      },
       "required": [
         "oneTwoJoinType",
         "oneThreeJoinType",
@@ -1327,8 +1450,9 @@
       "iconType": "four-join",
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
-      "label": "Four Join",
-      "tooltipText": "Join four files based on specified headers"
+      "label": "Join files (4)",
+      "tooltipText": "Join four files based on specified headers",
+      "order": 17
     },
     "config": {
       "type": "object",
@@ -1475,6 +1599,12 @@
           "title": "Merge based on common Name Template File Four"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Join Four Files",
+        "fields": []
+      },
       "required": [
         "oneTwoJoinType",
         "oneThreeJoinType",
@@ -1505,8 +1635,9 @@
       "iconType": "megaphone",
       "iconBackgroundColor": "#F59E0B",
       "type": "kafka",
-      "label": "Event Notification Read",
-      "tooltipText": "Event Notification Block"
+      "label": "Event notification (Read)",
+      "tooltipText": "Event Notification Block",
+      "order": 18
     },
     "config": {
       "type": "object",
@@ -1514,7 +1645,20 @@
         "kafkaTopics": {
           "type": "string",
           "title": "Kafka topics comma separated"
+        },
+        "groupId": {
+          "type": "string",
+          "title": "Consumer Group Id",
+          "default": "${neoDataflowId}"
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Consume Event Notifications",
+        "fields": [
+          "groupId"
+        ]
       },
       "required": [
         "kafkaTopics"
@@ -1534,8 +1678,9 @@
       "iconType": "kafka",
       "iconBackgroundColor": "#8B5CF6",
       "type": "kafka",
-      "label": "Event Publish Kafka",
-      "tooltipText": "Event Publish to Kafka"
+      "label": "Kafka Event (Write)",
+      "tooltipText": "Event Publish to Kafka",
+      "order": 19
     },
     "config": {
       "type": "object",
@@ -1584,6 +1729,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Publish Events to Kafka",
+        "fields": []
+      },
       "required": [
         "kafkaConnectionService",
         "kafkaTopics",
@@ -1605,8 +1756,9 @@
       "iconType": "csv",
       "iconBackgroundColor": "#6366F1",
       "type": "transform",
-      "label": "Hash CSV Columns",
-      "tooltipText": "Hash csv data cell by cell using the specified hashing algorithms"
+      "label": "Hashing (CSV)",
+      "tooltipText": "Hash csv data cell by cell using the specified hashing algorithms",
+      "order": 20
     },
     "config": {
       "type": "object",
@@ -1649,6 +1801,12 @@
           "default": ","
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Hash CSV Column Values",
+        "fields": []
+      },
       "required": [
         "Enabled",
         "Hashing Algorithm",
@@ -1670,8 +1828,9 @@
       "iconType": "http",
       "iconBackgroundColor": "#F97316",
       "type": "api",
-      "label": "HTTP Write",
-      "tooltipText": "OAuth-based API calls with rate limiting and retries"
+      "label": "API request",
+      "tooltipText": "OAuth-based API calls with rate limiting and retries",
+      "order": 21
     },
     "config": {
       "type": "object",
@@ -1700,7 +1859,8 @@
         },
         "apiBaseUrl": {
           "type": "string",
-          "title": "API Base URL"
+          "title": "API Base URL",
+          "default": "{intouch_url}"
         },
         "apiMethod": {
           "type": "string",
@@ -1717,7 +1877,20 @@
         "oAuthBaseUrl": {
           "type": "string",
           "title": "OAuth Base URL",
-          "description": "Base URL for OAuth token"
+          "description": "Base URL for OAuth token",
+          "default": "{intouch_url}"
+        },
+        "parseResponse": {
+          "type": "string",
+          "title": "Parse API Response",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "bulkSupport": {
           "type": "string",
@@ -1726,7 +1899,7 @@
             "true",
             "false"
           ],
-          "default": "True",
+          "default": "true",
           "uiSchema": {
             "customComponent": "CapSelect"
           }
@@ -1799,6 +1972,26 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for OAuth HTTP API Call. Make changes only if you know what you are doing.",
+        "fields": [
+          "apiBaseUrl",
+          "oAuthBaseUrl",
+          "bulkSupport",
+          "requestSplitPath",
+          "responseSplitPath",
+          "parsePathMap",
+          "recoverableErrorCodes",
+          "yieldingErrorCodes",
+          "maxRetries",
+          "additionalHeaders",
+          "rate",
+          "period",
+          "timeUnit"
+        ]
+      },
       "required": [
         "clientKey",
         "clientSecret",
@@ -1829,8 +2022,9 @@
       "iconType": "ftp",
       "iconBackgroundColor": "#14B8A6",
       "type": "api",
-      "label": "Iris FTP Audience Refresh",
-      "tooltipText": "Iris FTP Audience Refresh"
+      "label": "Iris Audience Refresh (FTP)",
+      "tooltipText": "Iris FTP Audience Refresh",
+      "order": 22
     },
     "config": {
       "type": "object",
@@ -1863,6 +2057,12 @@
           "default": ""
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Iris Audience Refresh (FTP)",
+        "fields": []
+      },
       "required": [
         "apiMethod",
         "apiUrl",
@@ -1884,16 +2084,26 @@
       "iconType": "box",
       "iconBackgroundColor": "#6366F1",
       "type": "transform",
-      "label": "JSLT Transform",
-      "tooltipText": "Transform Block"
+      "label": "JSLT",
+      "tooltipText": "Transform Block",
+      "order": 23
     },
     "config": {
       "type": "object",
       "properties": {
         "transformation": {
           "type": "string",
-          "title": "JSLT Transformation"
+          "title": "JSLT Transformation",
+          "uiSchema": {
+            "customComponent": "AceEditor"
+          }
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for JSLT JSON Transform",
+        "fields": []
       },
       "required": [
         "transformation"
@@ -1913,16 +2123,26 @@
       "iconType": "lightning",
       "iconBackgroundColor": "#FEC52E",
       "type": "transform",
-      "label": "Jolt Transform",
-      "tooltipText": "Transform Block using jolt"
+      "label": "JOLT",
+      "tooltipText": "Transform Block using jolt",
+      "order": 24
     },
     "config": {
       "type": "object",
       "properties": {
         "joltTransformation": {
           "type": "string",
-          "title": "JOLT Transformation"
+          "title": "JOLT Transformation",
+          "uiSchema": {
+            "customComponent": "AceEditor"
+          }
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for JOLT JSON Transform",
+        "fields": []
       },
       "required": [
         "joltTransformation"
@@ -1942,8 +2162,9 @@
       "iconType": "org",
       "iconBackgroundColor": "#0EA5E9",
       "type": "neo",
-      "label": "Neo Block",
-      "tooltipText": "Call Neo API, optionally split response, push to Kafka"
+      "label": "Neo API Call",
+      "tooltipText": "Call Neo API, optionally split response, push to Kafka",
+      "order": 25
     },
     "config": {
       "type": "object",
@@ -1990,6 +2211,12 @@
           "default": "400"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Neo API Call",
+        "fields": []
+      },
       "required": [
         "neoDataFlows",
         "Authorization"
@@ -2009,12 +2236,19 @@
       "iconType": "note-with-tick",
       "iconBackgroundColor": "#22C55E",
       "type": "file",
-      "label": "Ok File",
-      "tooltipText": "Ok File processor"
+      "label": "OK File",
+      "tooltipText": "Ok File processor",
+      "order": 26
     },
     "config": {
       "type": "object",
       "properties": {},
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for OK File Processor",
+        "fields": []
+      },
       "required": []
     }
   },
@@ -2031,8 +2265,9 @@
       "iconType": "split-json",
       "iconBackgroundColor": "#06B6D4",
       "type": "transform",
-      "label": "Split JSON",
-      "tooltipText": "Splits input json to multiple flow files"
+      "label": "Split",
+      "tooltipText": "Splits input json to multiple flow files",
+      "order": 27
     },
     "config": {
       "type": "object",
@@ -2056,6 +2291,12 @@
           }
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Split JSON Array",
+        "fields": []
+      },
       "required": [
         "JsonPath Expression",
         "split response"
@@ -2075,8 +2316,9 @@
       "iconType": "swap",
       "iconBackgroundColor": "#6366F1",
       "type": "transform",
-      "label": "Transform Header Data",
-      "tooltipText": "Header and expression based data manipulation"
+      "label": "Transform (Headers)",
+      "tooltipText": "Header and expression based data manipulation",
+      "order": 28
     },
     "config": {
       "type": "object",
@@ -2110,6 +2352,12 @@
           "title": "Mention header names (for use in mapping and expressions)"
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Map & Transform Headers",
+        "fields": []
+      },
       "required": [
         "outputHeadersOrder",
         "outputFileDelimiter",
@@ -2132,8 +2380,9 @@
       "iconType": "ftp-connector",
       "iconBackgroundColor": "#FFFFFF",
       "type": "sftp",
-      "label": "Credential Aware FTP Listing",
-      "tooltipText": "Poll SFTP server and fetch the source file satisfying regex for reconciliation"
+      "label": "SFTP (Listing)",
+      "tooltipText": "Poll SFTP server and fetch the source file satisfying regex for reconciliation",
+      "order": 29
     },
     "config": {
       "type": "object",
@@ -2199,6 +2448,12 @@
           "default": 22
         }
       },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for SFTP List (Reconciliation)",
+        "fields": []
+      },
       "required": [
         "host",
         "user",
@@ -2223,8 +2478,9 @@
       "iconType": "alarm",
       "iconBackgroundColor": "#64748B",
       "type": "trigger",
-      "label": "Cron Trigger",
-      "tooltipText": "Cron Based Trigger"
+      "label": "Cron",
+      "tooltipText": "Cron Based Trigger",
+      "order": 30
     },
     "config": {
       "type": "object",
@@ -2234,6 +2490,12 @@
           "title": "Cron Trigger Schedule",
           "default": "0 0/5 * * * ?"
         }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Cron Schedule",
+        "fields": []
       },
       "required": []
     }

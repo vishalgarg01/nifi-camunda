@@ -1,8 +1,10 @@
 package com.emigran.nifi.migration.service;
 
+import com.emigran.nifi.migration.client.ConfigManagerClient;
 import com.emigran.nifi.migration.client.NifiNewClient;
 import com.emigran.nifi.migration.client.NifiOldClient;
 import com.emigran.nifi.migration.client.NeoRuleApiClient;
+import com.emigran.nifi.migration.model.RuleMeta;
 import com.emigran.nifi.migration.model.DataflowDetail;
 import com.emigran.nifi.migration.model.DataflowSummary;
 import com.emigran.nifi.migration.model.Block;
@@ -17,6 +19,8 @@ import com.emigran.nifi.migration.model.neo.BlockPosition;
 import com.emigran.nifi.migration.model.neo.BlockRelation;
 import com.emigran.nifi.migration.model.neo.NeoBlock;
 import com.emigran.nifi.migration.model.neo.VersionUpdateRequest;
+import com.emigran.nifi.migration.model.configmanager.ConfigResourceRequest;
+import com.emigran.nifi.migration.model.configmanager.ConfigResourceResponse;
 import com.emigran.nifi.migration.util.JoltSpecUtil;
 import com.emigran.nifi.migration.util.JoltSpecUtil.JoltInputShape;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
@@ -44,6 +48,7 @@ public class NifiMigrationService {
     private final NifiOldClient oldClient;
     private final NifiNewClient newClient;
     private final NeoRuleApiClient neoRuleApiClient;
+    private final ConfigManagerClient configManagerClient;
     private final RulesMetasService rulesMetasService;
     private final FlowXmlSecretResolver secretResolver;
     private final FlowXmlTransformPropertiesExtractor transformPropertiesExtractor;
@@ -59,6 +64,7 @@ public class NifiMigrationService {
     public NifiMigrationService(NifiOldClient oldClient,
                                 NifiNewClient newClient,
                                 NeoRuleApiClient neoRuleApiClient,
+                                ConfigManagerClient configManagerClient,
                                 RulesMetasService rulesMetasService,
                                 FlowXmlSecretResolver secretResolver,
                                 FlowXmlTransformPropertiesExtractor transformPropertiesExtractor,
@@ -67,6 +73,7 @@ public class NifiMigrationService {
         this.oldClient = oldClient;
         this.newClient = newClient;
         this.neoRuleApiClient = neoRuleApiClient;
+        this.configManagerClient = configManagerClient;
         this.rulesMetasService = rulesMetasService;
         this.secretResolver = secretResolver;
         this.transformPropertiesExtractor = transformPropertiesExtractor;
@@ -280,6 +287,7 @@ public class NifiMigrationService {
             log.info("[migrateDataflow] Building neo blocks from detail");
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
 //            applyHardcodedValuesForNeoBlocks(neoBlocks);
+            applyConfigManagerSelectValues(detail != null ? detail.getName() : summary.getName(), neoBlocks);
             String scheduleCron = getScheduleCron(detail);
 
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
@@ -611,6 +619,111 @@ public class NifiMigrationService {
                 neo.getConfig().put("processedDirectory", "/Capillary testing/vtest1/process");
                 neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest1/error");
             }
+        }
+    }
+
+    private void applyConfigManagerSelectValues(String dataflowName, List<NeoBlock> neoBlocks) {
+        if (neoBlocks == null || neoBlocks.isEmpty()) return;
+        String dataflowKey = normalizeForConfigManagerKey(dataflowName);
+        Map<String, ConfigResourceRequest> requestsByName = new LinkedHashMap<>();
+        List<PendingConfigReference> pending = new ArrayList<>();
+
+        for (NeoBlock neo : neoBlocks) {
+            Map<String, Object> config = neo.getConfig();
+            if (config == null || config.isEmpty()) continue;
+            Map<String, RuleMeta.PropertySchema> schemas = rulesMetasService.getPropertySchemasForBlockType(neo.getType());
+            if (schemas.isEmpty()) continue;
+
+            for (Map.Entry<String, RuleMeta.PropertySchema> entry : schemas.entrySet()) {
+                String propName = entry.getKey();
+                RuleMeta.PropertySchema schema = entry.getValue();
+                if (!isConfigManagerSelect(schema)) continue;
+
+                Object raw = config.get(propName);
+                if (raw == null) continue;
+                String rawValue = String.valueOf(raw);
+
+                if (rawValue.contains("___")) {
+                    String keyPart = rawValue.substring(0, rawValue.indexOf("___"));
+                    ensureVariableKeyMapEntry(neo, propName, keyPart);
+                    continue;
+                }
+
+                String configKey = buildConfigManagerKey(dataflowKey, propName);
+                boolean isSecret = Boolean.TRUE.equals(schema.getUseSecret());
+                requestsByName.putIfAbsent(configKey, new ConfigResourceRequest(configKey, rawValue, null, isSecret));
+                pending.add(new PendingConfigReference(neo, propName, configKey, rawValue));
+            }
+        }
+
+        if (requestsByName.isEmpty()) {
+            return;
+        }
+
+        List<ConfigResourceResponse> created = configManagerClient.createConfigs(new ArrayList<>(requestsByName.values()));
+        Set<String> createdKeys = created == null ? Collections.emptySet() :
+                created.stream()
+                        .map(ConfigResourceResponse::getConfigName)
+                        .collect(Collectors.toSet());
+        if (createdKeys.isEmpty()) {
+            createdKeys = requestsByName.keySet();
+        }
+
+        for (PendingConfigReference ref : pending) {
+            if (!createdKeys.contains(ref.configKey)) {
+                continue;
+            }
+            Map<String, Object> config = ref.block.getConfig();
+            if (config != null) {
+                config.put(ref.propertyName, ref.configKey + "___" + ref.originalValue);
+            }
+            ensureVariableKeyMapEntry(ref.block, ref.propertyName, ref.configKey);
+        }
+    }
+
+    private boolean isConfigManagerSelect(RuleMeta.PropertySchema schema) {
+        if (schema == null || schema.getUiSchema() == null) return false;
+        Object component = schema.getUiSchema().get("customComponent");
+        return "ConfigManagerSelect".equals(component);
+    }
+
+    private String buildConfigManagerKey(String normalizedDataflowName, String propertyName) {
+        String prop = propertyName == null || propertyName.trim().isEmpty() ? "config" : propertyName;
+        return normalizedDataflowName + "_" + prop;
+    }
+
+    private String normalizeForConfigManagerKey(String dataflowName) {
+        String normalized = dataflowName == null ? "" : dataflowName.trim();
+        if (normalized.isEmpty()) {
+            normalized = "dataflow";
+        }
+        normalized = normalized.replaceAll("[^A-Za-z0-9]+", "_");
+        normalized = normalized.replaceAll("_+", "_");
+        normalized = normalized.replaceAll("^_+|_+$", "");
+        return normalized.isEmpty() ? "dataflow" : normalized;
+    }
+
+    private void ensureVariableKeyMapEntry(NeoBlock block, String propertyName, String varKey) {
+        if (block == null || propertyName == null || varKey == null || varKey.isEmpty()) return;
+        Map<String, String> existing = block.getVariableConfigKeyMap();
+        Map<String, String> updated = (existing == null || existing.isEmpty())
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(existing);
+        updated.put(propertyName, varKey);
+        block.setVariableConfigKeyMap(updated);
+    }
+
+    private static final class PendingConfigReference {
+        final NeoBlock block;
+        final String propertyName;
+        final String configKey;
+        final String originalValue;
+
+        PendingConfigReference(NeoBlock block, String propertyName, String configKey, String originalValue) {
+            this.block = block;
+            this.propertyName = propertyName;
+            this.configKey = configKey;
+            this.originalValue = originalValue;
         }
     }
 

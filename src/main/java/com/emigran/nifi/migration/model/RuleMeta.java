@@ -45,6 +45,8 @@ public class RuleMeta {
         private String type;
         private Object defaultValue;
         private Object oneOf;
+        private Map<String, Object> uiSchema;
+        private Boolean useSecret;
 
         public String getType() {
             return type;
@@ -70,6 +72,22 @@ public class RuleMeta {
 
         public void setOneOf(Object oneOf) {
             this.oneOf = oneOf;
+        }
+
+        public Map<String, Object> getUiSchema() {
+            return uiSchema;
+        }
+
+        public void setUiSchema(Map<String, Object> uiSchema) {
+            this.uiSchema = uiSchema;
+        }
+
+        public Boolean getUseSecret() {
+            return useSecret;
+        }
+
+        public void setUseSecret(Boolean useSecret) {
+            this.useSecret = useSecret;
         }
     }
 }

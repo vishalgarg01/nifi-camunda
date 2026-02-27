@@ -57,6 +57,15 @@ public class MigrationProperties {
     @Value("${nifi.migration.neo-rule.remote-user:}")
     private String neoRuleRemoteUser;
 
+    @Value("${nifi.migration.config-manager.base-url:}")
+    private String configManagerBaseUrl;
+
+    @Value("${nifi.migration.config-manager.bearer-token:}")
+    private String configManagerBearerToken;
+
+    @Value("${nifi.migration.config-manager.org-id:}")
+    private String configManagerOrgId;
+
     public String getOldBaseUrl() {
         return oldBaseUrl;
     }
@@ -123,5 +132,17 @@ public class MigrationProperties {
 
     public String getNeoRuleRemoteUser() {
         return neoRuleRemoteUser;
+    }
+
+    public String getConfigManagerBaseUrl() {
+        return configManagerBaseUrl;
+    }
+
+    public String getConfigManagerBearerToken() {
+        return configManagerBearerToken;
+    }
+
+    public String getConfigManagerOrgId() {
+        return configManagerOrgId;
     }
 }
