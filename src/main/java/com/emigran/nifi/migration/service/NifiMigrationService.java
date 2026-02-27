@@ -652,7 +652,7 @@ public class NifiMigrationService {
                 String configKey = buildConfigManagerKey(dataflowKey, propName);
                 boolean isSecret = Boolean.TRUE.equals(schema.getUseSecret());
                 requestsByName.putIfAbsent(configKey, new ConfigResourceRequest(configKey, rawValue, null, isSecret));
-                pending.add(new PendingConfigReference(neo, propName, configKey, rawValue));
+                pending.add(new PendingConfigReference(neo, propName, configKey, rawValue, isSecret));
             }
         }
 
@@ -675,7 +675,8 @@ public class NifiMigrationService {
             }
             Map<String, Object> config = ref.block.getConfig();
             if (config != null) {
-                config.put(ref.propertyName, ref.configKey + "___" + ref.originalValue);
+                String rendered = ref.isSecret ? "*****" : ref.originalValue;
+                config.put(ref.propertyName, ref.configKey + "___" + rendered);
             }
             ensureVariableKeyMapEntry(ref.block, ref.propertyName, ref.configKey);
         }
@@ -718,12 +719,14 @@ public class NifiMigrationService {
         final String propertyName;
         final String configKey;
         final String originalValue;
+        final boolean isSecret;
 
-        PendingConfigReference(NeoBlock block, String propertyName, String configKey, String originalValue) {
+        PendingConfigReference(NeoBlock block, String propertyName, String configKey, String originalValue, boolean isSecret) {
             this.block = block;
             this.propertyName = propertyName;
             this.configKey = configKey;
             this.originalValue = originalValue;
+            this.isSecret = isSecret;
         }
     }
 
@@ -867,7 +870,7 @@ public class NifiMigrationService {
      * if it contains "connect" (anywhere), returns the connect connection ID; otherwise null.
      */
     private String resolveKafkaConnectionFromOldBlock(List<Field> fields) {
-        String kafkaBrokers = getFieldValueFromFields(fields, "kafkaBrokers", "Kafka Brokers");
+        String kafkaBrokers = getFieldValueFromFields(fields, "kafkaBrokers", "Kafka Brokers", "brokers");
         if (kafkaBrokers == null || kafkaBrokers.trim().isEmpty()) {
             return null;
         }
