@@ -288,13 +288,13 @@ public class NifiMigrationService {
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
 //            applyHardcodedValuesForNeoBlocks(neoBlocks);
             applyConfigManagerSelectValues(detail != null ? detail.getName() : summary.getName(), neoBlocks);
-            String scheduleCron = getScheduleCron(detail);
+            String scheduleCron = normalizeToFiveFieldCron(getScheduleCron(detail));
 
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
             updateRequest.setBlocks(neoBlocks);
-//            if(!scheduleCron.equalsIgnoreCase("0 0/5 * * * ?")){
-//                scheduleCron = "0 0/5 * * * ?";
-//            }
+            if(scheduleCron.equalsIgnoreCase("cron_not_set")){
+                scheduleCron = "0/2 * * * * ?";
+            }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
             updateRequest.setTag("migration");
 
@@ -908,6 +908,20 @@ public class NifiMigrationService {
         if (s == null) return null;
         if (s.getCron() != null && !s.getCron().trim().isEmpty()) return s.getCron();
         return s.getScheduleExpression();
+    }
+
+    /**
+     * If cron has 6 fields (e.g., Quartz with seconds), drop the first field to make it 5-field cron.
+     */
+    private String normalizeToFiveFieldCron(String cron) {
+        if (cron == null) return null;
+        String trimmed = cron.trim();
+        if (trimmed.isEmpty()) return trimmed;
+        String[] parts = trimmed.split("\\s+");
+        if (parts.length == 7) {
+            return String.join(" ", Arrays.copyOf(parts, 6));
+        }
+        return trimmed;
     }
 
     private DiyBlockRequest toDiyBlock(com.emigran.nifi.migration.model.Block block) {
