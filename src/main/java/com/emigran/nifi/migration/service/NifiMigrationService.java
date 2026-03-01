@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -662,6 +663,12 @@ public class NifiMigrationService {
                 if (raw == null) continue;
                 String rawValue = String.valueOf(raw);
 
+                if (isMaskedValue(rawValue)) {
+                    config.remove(propName);
+                    removeVariableKeyMapEntry(neo, propName);
+                    continue;
+                }
+
                 if (rawValue.contains("___")) {
                     String keyPart = rawValue.substring(0, rawValue.indexOf("___"));
                     ensureVariableKeyMapEntry(neo, propName, keyPart);
@@ -678,7 +685,8 @@ public class NifiMigrationService {
                     continue;
                 }
 
-                String base = chooseConfigKeyBase(propName, dataflowKey);
+                boolean propertySeen = cache.hasProperty(propName);
+                String base = chooseConfigKeyBase(propName, dataflowKey, propertySeen);
                 String configKey = buildConfigManagerKey(base, propName);
                 requestsByName.putIfAbsent(configKey, new ConfigResourceRequest(configKey, rawValue, null, isSecret));
                 pending.add(new PendingConfigReference(neo, propName, configKey, rawValue, isSecret));
@@ -726,9 +734,13 @@ public class NifiMigrationService {
         return normalizedDataflowName + "_" + prop;
     }
 
-    private String chooseConfigKeyBase(String propertyName, String dataflowKey) {
-        if (propertyName != null && CONFIG_MANAGER_GLOBAL_KEYS.contains(propertyName) && properties.getConfigManagerOrgId() != null
+    private String chooseConfigKeyBase(String propertyName, String dataflowKey, boolean propertySeenBefore) {
+        if (propertyName != null && CONFIG_MANAGER_GLOBAL_KEYS.contains(propertyName)
+                && properties.getConfigManagerOrgId() != null
                 && !properties.getConfigManagerOrgId().trim().isEmpty()) {
+            if (propertySeenBefore) {
+                return dataflowKey;
+            }
             return properties.getConfigManagerOrgId().trim();
         }
         return dataflowKey;
@@ -755,6 +767,19 @@ public class NifiMigrationService {
         block.setVariableConfigKeyMap(updated);
     }
 
+    private void removeVariableKeyMapEntry(NeoBlock block, String propertyName) {
+        if (block == null || propertyName == null) return;
+        Map<String, String> existing = block.getVariableConfigKeyMap();
+        if (existing == null || existing.isEmpty()) return;
+        if (existing.remove(propertyName) != null) {
+            block.setVariableConfigKeyMap(new LinkedHashMap<>(existing));
+        }
+    }
+
+    private boolean isMaskedValue(String rawValue) {
+        return rawValue != null && rawValue.matches("\\*+");
+    }
+
     private static final class PendingConfigReference {
         final NeoBlock block;
         final String propertyName;
@@ -777,7 +802,7 @@ public class NifiMigrationService {
             return new ConfigCache();
         }
         try {
-            String json = Files.readString(path);
+            String json = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
             if (json == null || json.trim().isEmpty()) {
                 return new ConfigCache();
             }
@@ -792,9 +817,12 @@ public class NifiMigrationService {
         if (cache == null) return;
         Path path = getConfigCachePath(workspace);
         try {
-            Files.createDirectories(path.getParent());
+            Path parent = path.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             String json = CONFIG_CACHE_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(cache);
-            Files.writeString(path, json, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.write(path, json.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (Exception e) {
             log.warn("[ConfigCache] Failed to write cache at {}: {}", path, e.getMessage());
         }
@@ -824,6 +852,10 @@ public class NifiMigrationService {
             if (property == null || value == null || configKey == null) return;
             valueIndex.computeIfAbsent(property, k -> new HashMap<>()).putIfAbsent(value, configKey);
             entries.add(new ConfigCacheEntry(property, value, configKey, dataflowUuid));
+        }
+
+        boolean hasProperty(String property) {
+            return property != null && valueIndex.containsKey(property);
         }
 
         public Map<String, Map<String, String>> getValueIndex() {
