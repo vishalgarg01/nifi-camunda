@@ -187,7 +187,7 @@ public class NifiMigrationService {
             log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
             liveDataflows = oldClient.getDataflows(workspace.getId())
                     .stream()
-                    .filter(df -> df.getStatus() != null )
+                    .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
                     .collect(Collectors.toList());
         }
         log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", liveDataflows.size());
