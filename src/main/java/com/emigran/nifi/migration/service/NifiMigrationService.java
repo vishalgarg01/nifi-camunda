@@ -4,6 +4,7 @@ import com.emigran.nifi.migration.client.ConfigManagerClient;
 import com.emigran.nifi.migration.client.NifiNewClient;
 import com.emigran.nifi.migration.client.NifiOldClient;
 import com.emigran.nifi.migration.client.NeoRuleApiClient;
+import com.emigran.nifi.migration.config.MigrationProperties;
 import com.emigran.nifi.migration.model.RuleMeta;
 import com.emigran.nifi.migration.model.DataflowDetail;
 import com.emigran.nifi.migration.model.DataflowSummary;
@@ -21,6 +22,8 @@ import com.emigran.nifi.migration.model.neo.NeoBlock;
 import com.emigran.nifi.migration.model.neo.VersionUpdateRequest;
 import com.emigran.nifi.migration.model.configmanager.ConfigResourceRequest;
 import com.emigran.nifi.migration.model.configmanager.ConfigResourceResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.emigran.nifi.migration.util.JoltSpecUtil;
 import com.emigran.nifi.migration.util.JoltSpecUtil.JoltInputShape;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
@@ -36,6 +39,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +56,7 @@ public class NifiMigrationService {
     private final NifiNewClient newClient;
     private final NeoRuleApiClient neoRuleApiClient;
     private final ConfigManagerClient configManagerClient;
+    private final MigrationProperties properties;
     private final RulesMetasService rulesMetasService;
     private final FlowXmlSecretResolver secretResolver;
     private final FlowXmlTransformPropertiesExtractor transformPropertiesExtractor;
@@ -59,12 +67,17 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
+    private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
+            Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
+                    "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
+    private static final ObjectMapper CONFIG_CACHE_MAPPER = new ObjectMapper();
 
     @Autowired
     public NifiMigrationService(NifiOldClient oldClient,
                                 NifiNewClient newClient,
                                 NeoRuleApiClient neoRuleApiClient,
                                 ConfigManagerClient configManagerClient,
+                                MigrationProperties properties,
                                 RulesMetasService rulesMetasService,
                                 FlowXmlSecretResolver secretResolver,
                                 FlowXmlTransformPropertiesExtractor transformPropertiesExtractor,
@@ -74,6 +87,7 @@ public class NifiMigrationService {
         this.newClient = newClient;
         this.neoRuleApiClient = neoRuleApiClient;
         this.configManagerClient = configManagerClient;
+        this.properties = properties;
         this.rulesMetasService = rulesMetasService;
         this.secretResolver = secretResolver;
         this.transformPropertiesExtractor = transformPropertiesExtractor;
@@ -172,7 +186,7 @@ public class NifiMigrationService {
             log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
             liveDataflows = oldClient.getDataflows(workspace.getId())
                     .stream()
-                    .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
+                    .filter(df -> df.getStatus() != null )
                     .collect(Collectors.toList());
         }
         log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", liveDataflows.size());
@@ -287,7 +301,10 @@ public class NifiMigrationService {
             log.info("[migrateDataflow] Building neo blocks from detail");
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
 //            applyHardcodedValuesForNeoBlocks(neoBlocks);
-            applyConfigManagerSelectValues(detail != null ? detail.getName() : summary.getName(), neoBlocks);
+            applyConfigManagerSelectValues(sourceWorkspace,
+                    detail != null ? detail.getName() : summary.getName(),
+                    summary.getUuid(),
+                    neoBlocks);
             String scheduleCron = normalizeToFiveFieldCron(getScheduleCron(detail));
 
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
@@ -622,10 +639,12 @@ public class NifiMigrationService {
         }
     }
 
-    private void applyConfigManagerSelectValues(String dataflowName, List<NeoBlock> neoBlocks) {
+    private void applyConfigManagerSelectValues(Workspace workspace, String dataflowName, String oldDataflowUuid, List<NeoBlock> neoBlocks) {
         if (neoBlocks == null || neoBlocks.isEmpty()) return;
         String dataflowKey = normalizeForConfigManagerKey(dataflowName);
+        ConfigCache cache = loadConfigCache(workspace);
         Map<String, ConfigResourceRequest> requestsByName = new LinkedHashMap<>();
+        Set<String> reusableKeys = new HashSet<>();
         List<PendingConfigReference> pending = new ArrayList<>();
 
         for (NeoBlock neo : neoBlocks) {
@@ -646,31 +665,42 @@ public class NifiMigrationService {
                 if (rawValue.contains("___")) {
                     String keyPart = rawValue.substring(0, rawValue.indexOf("___"));
                     ensureVariableKeyMapEntry(neo, propName, keyPart);
+                    cache.record(propName, rawValue.substring(rawValue.indexOf("___") + 3), keyPart, oldDataflowUuid);
                     continue;
                 }
 
-                String configKey = buildConfigManagerKey(dataflowKey, propName);
                 boolean isSecret = Boolean.TRUE.equals(schema.getUseSecret());
+                String existingKey = cache.find(propName, rawValue);
+                if (existingKey != null) {
+                    reusableKeys.add(existingKey);
+                    pending.add(new PendingConfigReference(neo, propName, existingKey, rawValue, isSecret));
+                    cache.record(propName, rawValue, existingKey, oldDataflowUuid);
+                    continue;
+                }
+
+                String base = chooseConfigKeyBase(propName, dataflowKey);
+                String configKey = buildConfigManagerKey(base, propName);
                 requestsByName.putIfAbsent(configKey, new ConfigResourceRequest(configKey, rawValue, null, isSecret));
                 pending.add(new PendingConfigReference(neo, propName, configKey, rawValue, isSecret));
             }
         }
 
-        if (requestsByName.isEmpty()) {
-            return;
+        Set<String> createdKeys = Collections.emptySet();
+        if (!requestsByName.isEmpty()) {
+            List<ConfigResourceResponse> created = configManagerClient.createConfigs(new ArrayList<>(requestsByName.values()));
+            createdKeys = created == null ? Collections.emptySet() :
+                    created.stream()
+                            .map(ConfigResourceResponse::getConfigName)
+                            .collect(Collectors.toSet());
+            if (createdKeys.isEmpty()) {
+                createdKeys = requestsByName.keySet();
+            }
         }
-
-        List<ConfigResourceResponse> created = configManagerClient.createConfigs(new ArrayList<>(requestsByName.values()));
-        Set<String> createdKeys = created == null ? Collections.emptySet() :
-                created.stream()
-                        .map(ConfigResourceResponse::getConfigName)
-                        .collect(Collectors.toSet());
-        if (createdKeys.isEmpty()) {
-            createdKeys = requestsByName.keySet();
-        }
+        Set<String> usableKeys = new HashSet<>(reusableKeys);
+        usableKeys.addAll(createdKeys);
 
         for (PendingConfigReference ref : pending) {
-            if (!createdKeys.contains(ref.configKey)) {
+            if (!usableKeys.contains(ref.configKey)) {
                 continue;
             }
             Map<String, Object> config = ref.block.getConfig();
@@ -679,7 +709,10 @@ public class NifiMigrationService {
                 config.put(ref.propertyName, ref.configKey + "___" + rendered);
             }
             ensureVariableKeyMapEntry(ref.block, ref.propertyName, ref.configKey);
+            cache.record(ref.propertyName, ref.originalValue, ref.configKey, oldDataflowUuid);
         }
+
+        saveConfigCache(cache, workspace);
     }
 
     private boolean isConfigManagerSelect(RuleMeta.PropertySchema schema) {
@@ -691,6 +724,14 @@ public class NifiMigrationService {
     private String buildConfigManagerKey(String normalizedDataflowName, String propertyName) {
         String prop = propertyName == null || propertyName.trim().isEmpty() ? "config" : propertyName;
         return normalizedDataflowName + "_" + prop;
+    }
+
+    private String chooseConfigKeyBase(String propertyName, String dataflowKey) {
+        if (propertyName != null && CONFIG_MANAGER_GLOBAL_KEYS.contains(propertyName) && properties.getConfigManagerOrgId() != null
+                && !properties.getConfigManagerOrgId().trim().isEmpty()) {
+            return properties.getConfigManagerOrgId().trim();
+        }
+        return dataflowKey;
     }
 
     private String normalizeForConfigManagerKey(String dataflowName) {
@@ -727,6 +768,126 @@ public class NifiMigrationService {
             this.configKey = configKey;
             this.originalValue = originalValue;
             this.isSecret = isSecret;
+        }
+    }
+
+    private ConfigCache loadConfigCache(Workspace workspace) {
+        Path path = getConfigCachePath(workspace);
+        if (!Files.exists(path)) {
+            return new ConfigCache();
+        }
+        try {
+            String json = Files.readString(path);
+            if (json == null || json.trim().isEmpty()) {
+                return new ConfigCache();
+            }
+            return CONFIG_CACHE_MAPPER.readValue(json, new TypeReference<ConfigCache>() {});
+        } catch (Exception e) {
+            log.warn("[ConfigCache] Failed to read cache at {}: {}", path, e.getMessage());
+            return new ConfigCache();
+        }
+    }
+
+    private void saveConfigCache(ConfigCache cache, Workspace workspace) {
+        if (cache == null) return;
+        Path path = getConfigCachePath(workspace);
+        try {
+            Files.createDirectories(path.getParent());
+            String json = CONFIG_CACHE_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(cache);
+            Files.writeString(path, json, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (Exception e) {
+            log.warn("[ConfigCache] Failed to write cache at {}: {}", path, e.getMessage());
+        }
+    }
+
+    private Path getConfigCachePath(Workspace workspace) {
+        String baseDir = properties.getFlowXmlCacheDir();
+        if (baseDir == null || baseDir.trim().isEmpty()) {
+            baseDir = "./flow-cache";
+        }
+        String workspacePart = workspace != null && workspace.getId() != null ? workspace.getId().toString() : "unknown-workspace";
+        return Paths.get(baseDir, "config-manager", "workspace-" + workspacePart + ".json");
+    }
+
+    private static final class ConfigCache {
+        private Map<String, Map<String, String>> valueIndex = new HashMap<>();
+        private List<ConfigCacheEntry> entries = new ArrayList<>();
+
+        String find(String property, String value) {
+            if (property == null || value == null) return null;
+            Map<String, String> byValue = valueIndex.get(property);
+            if (byValue == null) return null;
+            return byValue.get(value);
+        }
+
+        void record(String property, String value, String configKey, String dataflowUuid) {
+            if (property == null || value == null || configKey == null) return;
+            valueIndex.computeIfAbsent(property, k -> new HashMap<>()).putIfAbsent(value, configKey);
+            entries.add(new ConfigCacheEntry(property, value, configKey, dataflowUuid));
+        }
+
+        public Map<String, Map<String, String>> getValueIndex() {
+            return valueIndex;
+        }
+
+        public void setValueIndex(Map<String, Map<String, String>> valueIndex) {
+            this.valueIndex = valueIndex;
+        }
+
+        public List<ConfigCacheEntry> getEntries() {
+            return entries;
+        }
+
+        public void setEntries(List<ConfigCacheEntry> entries) {
+            this.entries = entries;
+        }
+    }
+
+    private static final class ConfigCacheEntry {
+        public ConfigCacheEntry() {}
+
+        ConfigCacheEntry(String property, String value, String configKey, String dataflowUuid) {
+            this.property = property;
+            this.value = value;
+            this.configKey = configKey;
+            this.dataflowUuid = dataflowUuid;
+        }
+
+        private String property;
+        private String value;
+        private String configKey;
+        private String dataflowUuid;
+
+        public String getProperty() {
+            return property;
+        }
+
+        public void setProperty(String property) {
+            this.property = property;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+
+        public String getConfigKey() {
+            return configKey;
+        }
+
+        public void setConfigKey(String configKey) {
+            this.configKey = configKey;
+        }
+
+        public String getDataflowUuid() {
+            return dataflowUuid;
+        }
+
+        public void setDataflowUuid(String dataflowUuid) {
+            this.dataflowUuid = dataflowUuid;
         }
     }
 
