@@ -568,7 +568,7 @@ public class NifiMigrationService {
             }
             if ("http_write".equals(e.newType) && e.oldBlock != null && e.oldBlock.getType() != null
                     && e.oldBlock.getType().toLowerCase().startsWith("neo_transformer")) {
-                applyNeoTransformerHttpConfig(neo, e.oldBlock);
+                applyNeoTransformerHttpConfig(config, e.oldBlock);
             }
             // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
             if (KAFKA_BLOCK_TYPES.contains(e.newType) && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
@@ -649,24 +649,21 @@ public class NifiMigrationService {
         }
     }
 
-    private void applyNeoTransformerHttpConfig(NeoBlock neo, Block oldBlock) {
-        if (neo == null) return;
+    private void applyNeoTransformerHttpConfig(Map<String, Object> config, Block oldBlock) {
+        if (config == null) return;
 
-        Map<String, Object> config = neo.getConfig();
-        if (config == null) {
-            config = new HashMap<>();
-            neo.setConfig(config);
-        }
-
-        config.put("clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
-        config.put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
-        config.put("apiBaseUrl", DEFAULT_HTTP_WRITE_API_BASE_URL);
-        config.put("oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
-        config.put("parseResponse", Boolean.FALSE);
+        putIfAbsent(config, "clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
+        putIfAbsent(config, "clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
+        putIfAbsent(config, "apiBaseUrl", DEFAULT_HTTP_WRITE_API_BASE_URL);
+        putIfAbsent(config, "oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
+        putIfAbsent(config, "parseResponse", false);
 
         String endpoint = parseNeoDataFlowsEndpoint(oldBlock);
         if (endpoint != null && !endpoint.isEmpty()) {
-            config.put("apiEndPoint", endpoint);
+            Object existing = config.get("apiEndPoint");
+            if (existing == null || String.valueOf(existing).trim().isEmpty()) {
+                config.put("apiEndPoint", endpoint);
+            }
         }
     }
 
@@ -697,6 +694,14 @@ public class NifiMigrationService {
             return remainder;
         }
         return "/x/neo" + remainder;
+    }
+
+    private void putIfAbsent(Map<String, Object> config, String key, Object value) {
+        if (config == null || key == null) return;
+        Object existing = config.get(key);
+        if (existing == null || String.valueOf(existing).trim().isEmpty()) {
+            config.put(key, value);
+        }
     }
 
     private void applyConfigManagerSelectValues(Workspace workspace, String dataflowName, String oldDataflowUuid, List<NeoBlock> neoBlocks) {
