@@ -28,6 +28,7 @@ import com.emigran.nifi.migration.util.JoltSpecUtil;
 import com.emigran.nifi.migration.util.JoltSpecUtil.JoltInputShape;
 import com.emigran.nifi.migration.util.JsltMappingUtil;
 import com.emigran.nifi.migration.service.FlowXmlConcurrencyExtractor.ProcessorConcurrencyInfo;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -68,6 +69,10 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "3loyQH6YmB67mjZYchdgneU8V";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "GNnZBoFWwJGeTm2kYBjhVfoyfQtjBUm2djrhaywf";
+    private static final String DEFAULT_HTTP_WRITE_API_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
+    private static final String DEFAULT_HTTP_WRITE_OAUTH_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -561,6 +566,10 @@ public class NifiMigrationService {
                 config.put("File Delimiter", fileDelimiterFromTransform);
                 log.debug("[buildNeoBlocks] Source block: set fileDelimiter from old transform block: {}", fileDelimiterFromTransform);
             }
+            if ("http_write".equals(e.newType) && e.oldBlock != null && e.oldBlock.getType() != null
+                    && e.oldBlock.getType().toLowerCase().startsWith("neo_transformer")) {
+                applyNeoTransformerHttpConfig(neo, e.oldBlock);
+            }
             // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
             if (KAFKA_BLOCK_TYPES.contains(e.newType) && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
                 resolveWorkspaceUuidInConfig(config, oldDataflowUuid.trim());
@@ -638,6 +647,56 @@ public class NifiMigrationService {
                 neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest1/error");
             }
         }
+    }
+
+    private void applyNeoTransformerHttpConfig(NeoBlock neo, Block oldBlock) {
+        if (neo == null) return;
+
+        Map<String, Object> config = neo.getConfig();
+        if (config == null) {
+            config = new HashMap<>();
+            neo.setConfig(config);
+        }
+
+        config.put("clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
+        config.put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
+        config.put("apiBaseUrl", DEFAULT_HTTP_WRITE_API_BASE_URL);
+        config.put("oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
+        config.put("parseResponse", Boolean.FALSE);
+
+        String endpoint = parseNeoDataFlowsEndpoint(oldBlock);
+        if (endpoint != null && !endpoint.isEmpty()) {
+            config.put("apiEndPoint", endpoint);
+        }
+    }
+
+    private String parseNeoDataFlowsEndpoint(Block oldBlock) {
+        if (oldBlock == null || oldBlock.getFields() == null) return null;
+        String url = getFieldValueFromFields(oldBlock.getFields(), "neoDataFlows", "Neo Data Flows");
+        return parseNeoDataFlowsEndpoint(url);
+    }
+
+    private String parseNeoDataFlowsEndpoint(String url) {
+        if (url == null || url.trim().isEmpty()) return null;
+        String path = null;
+        try {
+            URI uri = new URI(url.trim());
+            path = uri.getPath();
+        } catch (Exception ignored) {
+            path = url.trim();
+        }
+        if (path == null) return null;
+        String prefix = "/api/v1/xto6x/execute";
+        String remainder = path.startsWith(prefix) ? path.substring(prefix.length()) : path;
+        remainder = remainder == null ? "" : remainder.trim();
+        if (remainder.isEmpty()) return null;
+        if (!remainder.startsWith("/")) {
+            remainder = "/" + remainder;
+        }
+        if (remainder.startsWith("/x/neo/")) {
+            return remainder;
+        }
+        return "/x/neo" + remainder;
     }
 
     private void applyConfigManagerSelectValues(Workspace workspace, String dataflowName, String oldDataflowUuid, List<NeoBlock> neoBlocks) {
@@ -1190,14 +1249,14 @@ public class NifiMigrationService {
         mapping.put("sftp_push_hidden", "sftp_write");
         mapping.put("intouch_transaction_v2_1", "http_write");
         mapping.put("retro_destination", "http_write");
-        mapping.put("neo_transformer", "neo_block");
+        mapping.put("neo_transformer", "http_write");
         mapping.put("kafka_connect_to_source", "kafka_topic_read");
         mapping.put("csv_json_neo_transformer", "convert_csv_to_json");
         mapping.put("neo_transformer_iteration", "neo_block_loop");
         mapping.put("hash_csv_fields", "hash_csv_columns");
         mapping.put("kafka_connect_to_source_tracing", "kafka_topic_read");
         mapping.put("csv_json_neo_transformer_v2", "convert_csv_to_json");
-        mapping.put("neo_transformer_v2", "neo_block");
+        mapping.put("neo_transformer_v2", "http_write");
         mapping.put("json_split", "split_json");
         mapping.put("sftp_move", "sftp_write");
         mapping.put("put_file_to_sftp", "sftp_write");
