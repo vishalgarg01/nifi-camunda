@@ -8,6 +8,7 @@ public class VersionUpdateRequest {
     private List<NeoBlock> blocks;
     private String schedule;
     private String tag;
+    private String usersForReportingEmail;
 
     public List<NeoBlock> getBlocks() {
         return blocks;
@@ -31,5 +32,13 @@ public class VersionUpdateRequest {
 
     public void setTag(String tag) {
         this.tag = tag;
+    }
+
+    public String getUsersForReportingEmail() {
+        return usersForReportingEmail;
+    }
+
+    public void setUsersForReportingEmail(String usersForReportingEmail) {
+        this.usersForReportingEmail = usersForReportingEmail;
     }
 }

@@ -320,6 +320,14 @@ public class NifiMigrationService {
             }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
             updateRequest.setTag("migration");
+            List<String> reportRecipients = newClient.getDataflowReportRecipients(summary.getUuid());
+            if (!reportRecipients.isEmpty()) {
+                String recipientsCsv = String.join(",", reportRecipients);
+                updateRequest.setUsersForReportingEmail(recipientsCsv);
+                log.info("[migrateDataflow] Reporting recipients found for dataflow {}: {}", neoDataflowId, recipientsCsv);
+            } else {
+                log.info("[migrateDataflow] No reporting recipients found for dataflow {}", neoDataflowId);
+            }
 
             log.info("[migrateDataflow] Updating version with {} blocks", neoBlocks.size());
             neoRuleApiClient.updateVersion(neoDataflowId, versionId, updateRequest);

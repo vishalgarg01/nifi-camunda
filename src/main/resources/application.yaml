@@ -37,7 +37,7 @@ camunda.bpm:
 nifi:
   migration:
     old:
-      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://uscrm.connectplus.capillarytech.com/api}
+      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://crm-nightly-new.connectplus.capillarytech.com/api}
     new:
       base-url: ${NIFI_MIGRATION_NEW_BASE_URL:https://crm-nightly-new.connectplus.capillarytech.com/api}
     auth:
