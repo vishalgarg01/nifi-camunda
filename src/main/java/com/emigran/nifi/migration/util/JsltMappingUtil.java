@@ -20,6 +20,7 @@ public final class JsltMappingUtil {
 
     private static final Pattern CONST_PATTERN = Pattern.compile("const\\{([^}]*)\\}");
     private static final Pattern HDR_IN_EXP_PATTERN = Pattern.compile("hdr\\{([^}]+)\\}");
+    private static final Pattern CONCAT_PREFIX_PATTERN = Pattern.compile("^\\s*'([^']+)'\\s*\\.concat\\s*\\(");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -129,6 +130,11 @@ public final class JsltMappingUtil {
             return "null";
         }
         String v = value.trim();
+        // Strip surrounding double-quotes if the value was escaped in JSON source
+        // e.g. "\"exp{...}\"" parses to "exp{...}" (with literal surrounding double-quotes)
+        if (v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) {
+            v = v.substring(1, v.length() - 1).trim();
+        }
 
         Matcher constMatcher = CONST_PATTERN.matcher(v);
         if (constMatcher.matches()) {
@@ -169,6 +175,14 @@ public final class JsltMappingUtil {
         String fieldName = hdrMatcher.group(1).trim();
         String fieldSelector = toJsltSelector(fieldName);
 
+        // Handle 'prefix'.concat(...hdr{field}...) pattern — prefix literal comes before the field
+        Matcher prefixMatcher = CONCAT_PREFIX_PATTERN.matcher(inner);
+        if (prefixMatcher.find()) {
+            String prefix = prefixMatcher.group(1);
+            return quoteJsltString(prefix) + " + " + fieldSelector;
+        }
+
+        // Handle hdr{field} + 'literal' pattern — literal comes after the field
         List<String> literals = new ArrayList<>();
         int idx = 0;
         while (idx < inner.length()) {
