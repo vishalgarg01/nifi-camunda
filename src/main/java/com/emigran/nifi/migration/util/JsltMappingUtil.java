@@ -21,6 +21,8 @@ public final class JsltMappingUtil {
     private static final Pattern CONST_PATTERN = Pattern.compile("const\\{([^}]*)\\}");
     private static final Pattern HDR_IN_EXP_PATTERN = Pattern.compile("hdr\\{([^}]+)\\}");
     private static final Pattern CONCAT_PREFIX_PATTERN = Pattern.compile("^\\s*'([^']+)'\\s*\\.concat\\s*\\(");
+    private static final Pattern BASE64_PATTERN = Pattern.compile("^base64\\{([^}]+)\\}$");
+    private static final Pattern BASE64_HDR_IN_EXP_PATTERN = Pattern.compile("base64\\{hdr\\{([^}]+)\\}\\}");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -142,6 +144,12 @@ public final class JsltMappingUtil {
             return quoteJsltString(literal);
         }
 
+        Matcher base64Matcher = BASE64_PATTERN.matcher(v);
+        if (base64Matcher.matches()) {
+            String fieldName = base64Matcher.group(1).trim();
+            return quoteJsltString("${" + fieldName + ":base64Encode()}");
+        }
+
         if (v.startsWith("exp{")) {
             String inner = v.substring(4, v.length() - 1).trim();
             String jsltExpr = parseExpToJslt(inner);
@@ -168,6 +176,19 @@ public final class JsltMappingUtil {
     }
 
     private static String parseExpToJslt(String inner) {
+        // Handle 'prefix'.concat(base64{hdr{field}}) — base64 encode with optional prefix
+        Matcher base64HdrMatcher = BASE64_HDR_IN_EXP_PATTERN.matcher(inner);
+        if (base64HdrMatcher.find()) {
+            String fieldName = base64HdrMatcher.group(1).trim();
+            String nifiEl = "${" + fieldName + ":base64Encode()}";
+            Matcher prefixMatcher = CONCAT_PREFIX_PATTERN.matcher(inner);
+            if (prefixMatcher.find()) {
+                String prefix = prefixMatcher.group(1);
+                return quoteJsltString(prefix + nifiEl);
+            }
+            return quoteJsltString(nifiEl);
+        }
+
         Matcher hdrMatcher = HDR_IN_EXP_PATTERN.matcher(inner);
         if (!hdrMatcher.find()) {
             return null;
