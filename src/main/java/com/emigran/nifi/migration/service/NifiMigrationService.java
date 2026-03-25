@@ -368,7 +368,7 @@ public class NifiMigrationService {
 
             try {
                 log.info("[migrateDataflow] Stopping old dataflow on source system: workspaceId={}, dataflowUuid={}", sourceWorkspace.getId(), summary.getUuid());
-//                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
+                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
             } catch (Exception stopEx) {
                 log.warn("[migrateDataflow] Failed to stop old dataflow (non-fatal): {}", stopEx.getMessage());
             }
