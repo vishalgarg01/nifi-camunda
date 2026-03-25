@@ -167,7 +167,7 @@ public class NifiMigrationService {
     private void migrateWorkspace(Workspace workspace, String dataflowIdFilter) {
         log.info("[migrateWorkspace] START - workspace={} (id={})", workspace.getName(), workspace.getId());
 
-        List<DataflowSummary> liveDataflows;
+        List<DataflowSummary> dataflowsToMigrate;
         if (dataflowIdFilter != null && !dataflowIdFilter.trim().isEmpty()) {
             List<String> dataflowUuids = Arrays.stream(dataflowIdFilter.split(","))
                     .map(String::trim)
@@ -187,17 +187,19 @@ public class NifiMigrationService {
                     resolved.add(detail);
                 }
             }
-            liveDataflows = resolved;
+            dataflowsToMigrate = resolved;
         } else {
-            log.info("[migrateWorkspace] Fetching live dataflows for workspace id={}", workspace.getId());
-            liveDataflows = oldClient.getDataflows(workspace.getId())
+            log.info("[migrateWorkspace] Fetching live and stopped dataflows for workspace id={}", workspace.getId());
+            dataflowsToMigrate = oldClient.getDataflows(workspace.getId())
                     .stream()
-                    .filter(df -> df.getStatus() != null && "Live".equalsIgnoreCase(df.getStatus().getState()))
+                    .filter(df -> df.getStatus() != null &&
+                            ("Live".equalsIgnoreCase(df.getStatus().getState()) ||
+                             "Stopped".equalsIgnoreCase(df.getStatus().getState())))
                     .collect(Collectors.toList());
         }
-        log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", liveDataflows.size());
+        log.info("[migrateWorkspace] Found {} dataflow(s) to migrate", dataflowsToMigrate.size());
 
-        for (DataflowSummary summary : liveDataflows) {
+        for (DataflowSummary summary : dataflowsToMigrate) {
             try {
                 migrateDataflow(workspace, summary);
             } catch (Throwable t) {
@@ -332,6 +334,15 @@ public class NifiMigrationService {
             log.info("[migrateDataflow] Updating version with {} blocks", neoBlocks.size());
             neoRuleApiClient.updateVersion(neoDataflowId, versionId, updateRequest);
 
+            boolean wasLive = summary.getStatus() != null && "Live".equalsIgnoreCase(summary.getStatus().getState());
+            if (!wasLive) {
+                log.info("[migrateDataflow] Dataflow was Stopped in source — skipping make-live steps");
+                log.info("[migrateDataflow] SUCCESS (stopped) - dataflow={} -> neoDataflowId={}", summary.getName(), neoDataflowId);
+                resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
+                        neoDataflowId, "Migrated (stopped) with neo dataflow id " + neoDataflowId);
+                return;
+            }
+
             log.info("[migrateDataflow] Post-hook to make dataflow live");
             neoRuleApiClient.postHookForConnectPlus(neoDataflowId, versionId);
 
@@ -364,7 +375,7 @@ public class NifiMigrationService {
 
             log.info("[migrateDataflow] SUCCESS - dataflow={} -> neoDataflowId={}", summary.getName(), neoDataflowId);
             resultLogger.logSuccess(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
-                    "Migrated with neo dataflow id " + neoDataflowId);
+                    neoDataflowId, "Migrated with neo dataflow id " + neoDataflowId);
 
             try {
                 log.info("[migrateDataflow] Stopping old dataflow on source system: workspaceId={}, dataflowUuid={}", sourceWorkspace.getId(), summary.getUuid());

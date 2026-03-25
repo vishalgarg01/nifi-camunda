@@ -21,6 +21,7 @@ public class MigrationResultLogger {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final File outputDir;
     private File outputFile;
+    private final File csvFile;
     private final List<Map<String, Object>> succeeded = new ArrayList<>();
     private final List<Map<String, Object>> failed = new ArrayList<>();
 
@@ -30,7 +31,21 @@ public class MigrationResultLogger {
         if (!outputDir.exists()) {
             outputDir.mkdirs();
         }
+        String orgId = properties.getConfigManagerOrgId();
+        this.csvFile = new File(outputDir, (orgId != null && !orgId.isEmpty() ? orgId : "migration") + ".csv");
+        initCsvHeader();
         initOutputFile();
+    }
+
+    private void initCsvHeader() {
+        if (!csvFile.exists()) {
+            try (FileWriter writer = new FileWriter(csvFile, false)) {
+                writer.write("dataflowName,oldId,newId");
+                writer.write(System.lineSeparator());
+            } catch (IOException e) {
+                log.error("Unable to write CSV header to {}", csvFile.getAbsolutePath(), e);
+            }
+        }
     }
 
     private void initOutputFile() {
@@ -56,6 +71,28 @@ public class MigrationResultLogger {
         entry.put("message", message);
         write(entry);
         succeeded.add(copyForSummary(entry));
+    }
+
+    public synchronized void logSuccess(String workspaceName, String dataflowName, String dataflowUuid, String newDataflowId, String message) {
+        logSuccess(workspaceName, dataflowName, dataflowUuid, message);
+        writeCsvRow(dataflowName, dataflowUuid, newDataflowId);
+    }
+
+    private void writeCsvRow(String dataflowName, String oldId, String newId) {
+        try (FileWriter writer = new FileWriter(csvFile, true)) {
+            writer.write(escapeCsv(dataflowName) + "," + escapeCsv(oldId) + "," + escapeCsv(newId));
+            writer.write(System.lineSeparator());
+        } catch (IOException e) {
+            log.error("Unable to write CSV row to {}", csvFile.getAbsolutePath(), e);
+        }
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     public synchronized void logFailure(String workspaceName, String dataflowName, String message, Throwable ex) {
