@@ -84,6 +84,7 @@ public class FlowXmlTransformPropertiesExtractor {
         }
 
         String recordsPerSplitLessThan100 = null;
+        int minimumGroupRecordMin = Integer.MAX_VALUE;
 
         NodeList processors = dataflowGroup.getElementsByTagName("processor");
         for (int i = 0; i < processors.getLength(); i++) {
@@ -113,7 +114,10 @@ public class FlowXmlTransformPropertiesExtractor {
             if (props.containsKey(MINIMUM_GROUP_RECORD)) {
                 String val = props.get(MINIMUM_GROUP_RECORD);
                 if (val != null && !val.trim().isEmpty()) {
-                    out.setGroupSize(val.trim());
+                    int num = parseIntSafe(val.trim(), -1);
+                    if (num > 0 && num < minimumGroupRecordMin) {
+                        minimumGroupRecordMin = num;
+                    }
                 }
             }
             if (props.containsKey(RECORDS_PER_SPLIT) && recordsPerSplitLessThan100 == null) {
@@ -151,7 +155,9 @@ public class FlowXmlTransformPropertiesExtractor {
             }
             applyAttributionProps(props, out);
         }
-        if (out.getGroupSize() == null && recordsPerSplitLessThan100 != null) {
+        if (minimumGroupRecordMin < Integer.MAX_VALUE) {
+            out.setGroupSize(String.valueOf(minimumGroupRecordMin));
+        } else if (out.getGroupSize() == null && recordsPerSplitLessThan100 != null) {
             out.setGroupSize(recordsPerSplitLessThan100);
         }
         return out;

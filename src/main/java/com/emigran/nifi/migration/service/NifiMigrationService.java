@@ -594,6 +594,19 @@ public class NifiMigrationService {
                     && e.oldBlock.getType().toLowerCase().startsWith("neo_transformer")) {
                 applyNeoTransformerHttpConfig(config, e.oldBlock);
             }
+            if ("http_write".equals(e.newType) && e.oldBlock != null && e.oldBlock.getType() != null) {
+                String oldType = e.oldBlock.getType().toLowerCase();
+                if (oldType.startsWith("intouch_transaction_v2") || oldType.startsWith("retro_destination")) {
+                    Object clientKey = config.get("clientKey");
+                    Object clientSecret = config.get("clientSecret");
+                    if (clientKey == null || clientKey.toString().trim().isEmpty()) {
+                        config.put("clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
+                    }
+                    if (clientSecret == null || clientSecret.toString().trim().isEmpty()) {
+                        config.put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
+                    }
+                }
+            }
             // For Kafka blocks, resolve ${workspaceUuid}/${workspaceUUID} to old dataflow UUID so consumer group id (and other props) stay the same after migration
             if (KAFKA_BLOCK_TYPES.contains(e.newType) && oldDataflowUuid != null && !oldDataflowUuid.trim().isEmpty()) {
                 resolveWorkspaceUuidInConfig(config, oldDataflowUuid.trim());
@@ -736,6 +749,7 @@ public class NifiMigrationService {
         List<PendingConfigReference> pending = new ArrayList<>();
 
         for (NeoBlock neo : neoBlocks) {
+            String blockDataflowKey = dataflowKey + "_" + neo.getType();
             Map<String, Object> config = neo.getConfig();
             if (config == null || config.isEmpty()) continue;
             Map<String, RuleMeta.PropertySchema> schemas = rulesMetasService.getPropertySchemasForBlockType(neo.getType());
@@ -773,7 +787,7 @@ public class NifiMigrationService {
                 }
 
                 boolean propertySeen = cache.hasProperty(propName);
-                String base = chooseConfigKeyBase(propName, dataflowKey, propertySeen);
+                String base = chooseConfigKeyBase(propName, blockDataflowKey, propertySeen);
                 String configKey = buildConfigManagerKey(base, propName);
                 requestsByName.putIfAbsent(configKey, new ConfigResourceRequest(configKey, rawValue, null, isSecret));
                 pending.add(new PendingConfigReference(neo, propName, configKey, rawValue, isSecret));
