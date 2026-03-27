@@ -379,7 +379,7 @@ public class NifiMigrationService {
 
             try {
                 log.info("[migrateDataflow] Stopping old dataflow on source system: workspaceId={}, dataflowUuid={}", sourceWorkspace.getId(), summary.getUuid());
-                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
+//                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
             } catch (Exception stopEx) {
                 log.warn("[migrateDataflow] Failed to stop old dataflow (non-fatal): {}", stopEx.getMessage());
             }
@@ -418,9 +418,7 @@ public class NifiMigrationService {
                         oldBlock.getName(), info.getProcessorName());
                 continue;
             }
-            String processorTypeForApi = "org.apache.nifi.processors.standard.InvokeHTTP".equals(info.getProcessorClass())
-                    ? "com.capillary.foundation.processors.InvokeHttpV2"
-                    : info.getProcessorClass();
+            String processorTypeForApi = "com.capillary.foundation.processors.OAuthClientProcessor";
             ProcessorConcurrencyRequest request = new ProcessorConcurrencyRequest();
             request.setNeoDataflowId(neoDataflowId);
             request.setNeoVersionId(neoVersionId);
@@ -499,6 +497,10 @@ public class NifiMigrationService {
     private static final Map<String, List<String>> CONFIG_KEY_FIELD_ALIASES = Collections.unmodifiableMap(
             new HashMap<String, List<String>>() {{
                 put("headerMapping", Arrays.asList("headersMapping", "Rename Headers Mapping", "Header Mapping", "input.headerMapping", "input.headersMapping"));
+                put("groupBy", Arrays.asList("Group By"));
+                put("groupSize", Arrays.asList("Group size", "Group Size"));
+                put("sortHeaders", Arrays.asList("Sort"));
+                put("alphabeticalSort", Arrays.asList("Alphabetical Sort"));
             }});
 
     /**
@@ -520,6 +522,9 @@ public class NifiMigrationService {
         String baseName = transformBlock != null ? transformBlock.getName() : null;
 
         for (Block b : blocks) {
+            if ("ok_file".equalsIgnoreCase(b.getType())) {
+                continue;
+            }
             if (b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") )) {
                 ordered.add(new BlockOrderEntry(baseName + "-csv", mapLegacyToNew("convert_csv_to_json"), transformOrder, b.isSource(), b, "csv"));
                 ordered.add(new BlockOrderEntry(baseName + "-jslt", "jslt_transform", transformOrder + 1, false, b, "jslt"));
