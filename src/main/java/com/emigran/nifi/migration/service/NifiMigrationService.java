@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "3loyQH6YmB67mjZYchdgneU8V";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "GNnZBoFWwJGeTm2kYBjhVfoyfQtjBUm2djrhaywf";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "EsRqRo3YFndaKhIFeo1DLXcFI";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "62TxYZijwcujh4omFc5NZIwWz8SOomhPB9JyVOGc";
     private static final String DEFAULT_HTTP_WRITE_API_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final String DEFAULT_HTTP_WRITE_OAUTH_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
@@ -321,7 +321,7 @@ public class NifiMigrationService {
                 scheduleCron = "0/2 * * * * ?";
             }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
-            updateRequest.setTag("migration");
+            updateRequest.setTag("testingFlows");
             List<String> reportRecipients = newClient.getDataflowReportRecipients(summary.getUuid());
             if (!reportRecipients.isEmpty()) {
                 String recipientsCsv = String.join(",", reportRecipients);
@@ -653,29 +653,28 @@ public class NifiMigrationService {
             if (neo.getConfig() == null) continue;
             String type = neo.getType();
             if ("http_write".equals(type)) {
-                neo.getConfig().put("clientKey", "3loyQH6YmB67mjZYchdgneU8V");
-                neo.getConfig().put("clientSecret", "GNnZBoFWwJGeTm2kYBjhVfoyfQtjBUm2djrhaywf");
-                neo.getConfig().put("apiEndPoint", "https://crm-nightly-new.cc.capillarytech.com");
-                neo.getConfig().put("oAuthBaseUrl", "https://crm-nightly-new.cc.capillarytech.com");
+                neo.getConfig().put("clientKey", "3Ml3wkihs3YehNDz93rkJ9W45");
+                neo.getConfig().put("clientSecret", "E9PL2nbrZ2n3GSQhAPVTskLFCky0mQRxS8iULBBj");
 
-            } else if ("sftp_read".equals(type)) {
-                neo.getConfig().put("username", "capillary");
-                neo.getConfig().put("password", "captech123");
-                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest1/source");
-                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest1/process");
-                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest1/error");
             }
+//            else if ("sftp_read".equals(type)) {
+//                neo.getConfig().put("username", "capillary");
+//                neo.getConfig().put("password", "captech123");
+//                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest4/source");
+//                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest4/process");
+//                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest4/error");
+//            }
         }
     }
 
     private void applyNeoTransformerHttpConfig(Map<String, Object> config, Block oldBlock) {
         if (config == null) return;
 
-        putIfAbsent(config, "clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
-        putIfAbsent(config, "clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
-        putIfAbsent(config, "apiBaseUrl", DEFAULT_HTTP_WRITE_API_BASE_URL);
-        putIfAbsent(config, "oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
-        putIfAbsent(config, "parseResponse", false);
+        config.put( "clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
+        config.put( "clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
+//        putIfAbsent(config, "apiBaseUrl", DEFAULT_HTTP_WRITE_API_BASE_URL);
+//        putIfAbsent(config, "oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
+        config.put( "parseResponse", "false");
 
         String endpoint = parseNeoDataFlowsEndpoint(oldBlock);
         if (endpoint != null && !endpoint.isEmpty()) {

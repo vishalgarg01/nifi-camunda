@@ -37,9 +37,9 @@ camunda.bpm:
 nifi:
   migration:
     old:
-      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://crm-nightly-new.connectplus.capillarytech.com/api}
+      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://uscrm.connectplus.capillarytech.com/api}
     new:
-      base-url: ${NIFI_MIGRATION_NEW_BASE_URL:https://crm-nightly-new.connectplus.capillarytech.com/api}
+      base-url: ${NIFI_MIGRATION_NEW_BASE_URL:https://uscrm.connectplus.capillarytech.com/api}
     auth:
       # Set this to the raw Base64 token only (no "Basic " prefix)
       basic: ${NIFI_MIGRATION_AUTH_BASIC:YXV0b21hdGlvbl91c2VyOks1MjFyITMzYQ==}
@@ -54,17 +54,17 @@ nifi:
       sensitive-key: ${NIFI_MIGRATION_FLOW_XML_SENSITIVE_KEY:}
     log-dir: ${NIFI_MIGRATION_LOG_DIR:./nifi-migration-logs}
     glue:
-      block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://crm-nightly-new.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
+      block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://uscrm.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
     neo-rule:
-      base-url: ${NIFI_MIGRATION_NEO_RULE_BASE_URL:https://nightly.intouch.capillarytech.com/extensions/neo/api/v1/xto6x}
+      base-url: ${NIFI_MIGRATION_NEO_RULE_BASE_URL:https://north-america.intouch.capillarytech.com/extensions/neo/api/v1/xto6x}
       application-id: ${NIFI_MIGRATION_NEO_APPLICATION_ID:174ea672-f42a-4dad-9335-7498c522bc7f}
       context: ${NIFI_MIGRATION_NEO_CONTEXT:connectplus}
-      cookie: ${NIFI_MIGRATION_NEO_COOKIE:GA1.4.1183059349.1736404268; csrftoken=1SY44IQOKvaFe6pwBMfbcdJMS1wZqlWN; CS=e98a1aad67150769d903094b51adedd3; CC=wwNrUxNUqQbAOTVduNzvcpQVnboiooCQRxAX3jl6XFLvqxbK47LVqGnfVQiU_BnG; CCEXP=1774073489; federated_id_token=eyJraWQiOiIxTXBGZjJsQ1ZJc19wbmtNQVhKZk9iRDR0aUpGTmZfaHZsY2xIb1RqclNBIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIwMHVnczVydHAweWJQckNzOTR4NyIsIm5hbWUiOiJWaXNoYWwgR2FyZyIsInZlciI6MSwiaXNzIjoiaHR0cHM6Ly9jYXBpbGxhcnkub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQiLCJhdWQiOiIwb2ExN3F2MjEyWm5RSHU5WDR4NyIsImlhdCI6MTc3Mzk4NzA4OSwiZXhwIjoxNzczOTkwNjg5LCJqdGkiOiJJRC54bG1JXzFKb0dVcGNDSUc0RkM2SmRPanYyVU5nZ3hIaGVwNFBvQVVrVTZBIiwiYW1yIjpbInB3ZCJdLCJpZHAiOiIwb2FxODJ6MTE5dG1SYnpONjR4NyIsInByZWZlcnJlZF91c2VybmFtZSI6InZpc2hhbC5nYXJnQGNhcGlsbGFyeXRlY2guY29tIiwiYXV0aF90aW1lIjoxNzczOTg3MDg4LCJhdF9oYXNoIjoiVEFWNXNuWEs1ZWFCSWJ1emhPME0wQSJ9.f2cbJKhXDpNbLOkFxEv6xJiCm6e_b1HbF2TRQIusGM5JIBvQRSDJeiL8PmWcNPaq_TEfspoqMahindsyS8px2FB_WyvwAx7rGlnlIZPrZtRbzzGuaHrgEfzb0NIve-3_nn2GmJSWShzNpr5B40B75SnpS1p5GaqxpPf552WopYGpyQ8n8SV8W4-tBXywwqNYQ8P3fOtTsClgbiqwCPQq_gpFQZnQx0STgJKPVJZQ4ENj2s1g2dvVgRusgfR2CkHRjlFQBbKql5daOqBZnNP6lB1sB4lAZiK7cNYqQhQaif0sitPuDO8F_PKvogNhKwaRi7Ilmk6P2oAby83mt_zynw; CT=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyIyODYyNzEiXSwib3JnSUQiOjAsImV4cCI6MTc3NDA3MzQ5MCwiaWF0IjoxNzczOTg3MDkwLCJpc3MiOiJjYXBpbGxhcnl0ZWNoLmNvbSIsImF1ZCI6ImNhcGlsbGFyeSxpbnRvdWNoLGFyeWEscmVvbixhcHBzIiwic291cmNlIjoiV0VCQVBQIiwicmVmZXJlbmNlSUQiOiI1MDc3MTM4NCJ9.q4rKCU6-YrL9rdHV8Lj6VY33H3d1N6zldtqlAGmsLbY; userPreferenceSelected=50771384_PLID; OID=1115}
+      cookie: ${NIFI_MIGRATION_NEO_COOKIE:csrftoken=LBHuV8qWVlLz04z0ac6JGCvjzjrn7YbR; CS=4a1019445863ab442fd915e2b47ef482; CC=efmByloZQsQdylkLXEwHmy9lIl085T8TJsi3_ddmnD5eg8uEWuoJupFkzxdh5xw6; CCEXP=1774595164; CT=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyI0Il0sIm9yZ0lEIjowLCJleHAiOjE3NzQ1OTUxNjUsImlhdCI6MTc3NDUwODc2NSwiaXNzIjoiY2FwaWxsYXJ5dGVjaC5jb20iLCJhdWQiOiJjYXBpbGxhcnksaW50b3VjaCxhcnlhLHJlb24sYXBwcyIsInNvdXJjZSI6IldFQkFQUCIsInJlZmVyZW5jZUlEIjoiNCJ9.RfvLxmoEtBttT9sqSyVl9b0uge2TO4RYeGy8w3IkAjw; userPreferenceSelected=4_RCID; OID=2000050}
       remote-user: ${NIFI_MIGRATION_NEO_REMOTE_USER:50771384}
     config-manager:
-      base-url: ${NIFI_MIGRATION_CONFIG_MANAGER_BASE_URL:https://nightly.intouch.capillarytech.com/extensions/neo/api/v1/}
-      org-id: ${NIFI_MIGRATION_CONFIG_MANAGER_ORG_ID:1115}
-      bearer-token: ${NIFI_MIGRATION_CONFIG_MANAGER_BEARER_TOKEN:eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyIyODYyNzEiXSwib3JnSUQiOjAsImV4cCI6MTc3NDA3MzQ5MCwiaWF0IjoxNzczOTg3MDkwLCJpc3MiOiJjYXBpbGxhcnl0ZWNoLmNvbSIsImF1ZCI6ImNhcGlsbGFyeSxpbnRvdWNoLGFyeWEscmVvbixhcHBzIiwic291cmNlIjoiV0VCQVBQIiwicmVmZXJlbmNlSUQiOiI1MDc3MTM4NCJ9.q4rKCU6-YrL9rdHV8Lj6VY33H3d1N6zldtqlAGmsLbY}
+      base-url: ${NIFI_MIGRATION_CONFIG_MANAGER_BASE_URL:https://north-america.intouch.capillarytech.com/extensions/neo/api/v1/}
+      org-id: ${NIFI_MIGRATION_CONFIG_MANAGER_ORG_ID:2000050}
+      bearer-token: ${NIFI_MIGRATION_CONFIG_MANAGER_BEARER_TOKEN:eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyI0Il0sIm9yZ0lEIjowLCJleHAiOjE3NzQ1OTUxNjUsImlhdCI6MTc3NDUwODc2NSwiaXNzIjoiY2FwaWxsYXJ5dGVjaC5jb20iLCJhdWQiOiJjYXBpbGxhcnksaW50b3VjaCxhcnlhLHJlb24sYXBwcyIsInNvdXJjZSI6IldFQkFQUCIsInJlZmVyZW5jZUlEIjoiNCJ9.RfvLxmoEtBttT9sqSyVl9b0uge2TO4RYeGy8w3IkAjw}
     string:
       encryptor:
         algorithm: ${NIFI_MIGRATION_STRING_ENCRYPTOR_ALGORITHM:PBEWITHMD5AND256BITAES-CBC-OPENSSL}

@@ -13,7 +13,7 @@
       "iconBackgroundColor": "#FFFFFF",
       "type": "sftp",
       "label": "SFTP (Read)",
-      "tooltipText": "Poll SFTP server, download files by regex, validate, move them",
+      "tooltipText": "Poll SFTP server, download files by regex, validate, move them (Connect-to-source)",
       "order": 1
     },
     "config": {
@@ -75,9 +75,17 @@
           }
         },
         "unzipFiles": {
-          "type": "boolean",
+          "type": "string",
           "title": "Unzip Files",
-          "description": "If true, unzip incoming files before validation"
+          "description": "If true, unzip incoming files before validation",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "apiErrorFilePath": {
           "type": "string",
@@ -88,9 +96,17 @@
           }
         },
         "searchDirRecursively": {
-          "type": "boolean",
+          "type": "string",
           "title": "Search Directory Recursively",
-          "description": "Search nested folders when listing files"
+          "description": "Search nested folders when listing files",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "port": {
           "type": "number",
@@ -120,7 +136,7 @@
         },
         "private_key_path": {
           "type": "string",
-          "title": "Private key path",
+          "title": "Private Key Path",
           "description": "Optional private key path for SFTP auth",
           "uiSchema": {
             "customComponent": "ConfigManagerSelect"
@@ -128,7 +144,7 @@
         },
         "key_passphrase": {
           "type": "string",
-          "title": "Key passphrase",
+          "title": "Key Passphrase",
           "description": "Optional private key passphrase",
           "uiSchema": {
             "customComponent": "ConfigManagerSelect"
@@ -139,7 +155,11 @@
         "showAdvancedSection": true,
         "title": "Advanced Properties",
         "description": "Advanced properties for Consume SFTP Files. Make changes only if you know what you are doing.",
-        "fields": ["private_key_path", "key_passphrase", "unzipFiles", "searchDirRecursively", "port", "File Delimiter", "Report Status Code"]
+        "fields": [
+          "private_key_path",
+          "key_passphrase",
+          "Report Status Code"
+        ]
       },
       "required": [
         "hostname",
@@ -169,7 +189,7 @@
       "iconBackgroundColor": "#FFFFFF",
       "type": "sftp",
       "label": "SFTP (Write)",
-      "tooltipText": "Push files to SFTP server with optional file compression",
+      "tooltipText": "Push files to SFTP server with optional file compression (Connect-to-destination)",
       "order": 2
     },
     "config": {
@@ -205,8 +225,16 @@
           }
         },
         "createRemoteDirectory": {
-          "type": "boolean",
-          "title": "Create Remote Directory"
+          "type": "string",
+          "title": "Create Remote Directory",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "conflictResolution": {
           "type": "string",
@@ -223,8 +251,16 @@
           }
         },
         "zipFiles": {
-          "type": "boolean",
-          "title": "Zip Files"
+          "type": "string",
+          "title": "Zip Files",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "port": {
           "type": "number",
@@ -238,11 +274,11 @@
         },
         "private_key_path": {
           "type": "string",
-          "title": "Private key"
+          "title": "Private Key"
         },
         "key_passphrase": {
           "type": "string",
-          "title": "Key passphrase"
+          "title": "Key Passphrase"
         }
       },
       "advancedSection": {
@@ -280,7 +316,7 @@
       "iconBackgroundColor": "#FFFFFF",
       "type": "s3",
       "label": "S3 (Read)",
-      "tooltipText": "Poll S3 bucket, downloads file in the path and moves file",
+      "tooltipText": "Poll S3 bucket, downloads file in the path and moves file (Connect-to-source)",
       "order": 3
     },
     "config": {
@@ -327,7 +363,7 @@
         },
         "s3AccessKey": {
           "type": "string",
-          "title": "S3 accessKey",
+          "title": "S3 Access Key",
           "uiSchema": {
             "customComponent": "ConfigManagerSelect"
           }
@@ -399,7 +435,7 @@
       "iconBackgroundColor": "#FFFFFF",
       "type": "s3",
       "label": "S3 (Write)",
-      "tooltipText": "Put S3 Object",
+      "tooltipText": "Put S3 Object (Connect-to-destination)",
       "order": 4
     },
     "config": {
@@ -454,7 +490,7 @@
         },
         "AWSCredentialsProviderService": {
           "type": "string",
-          "title": "AWS Credentials Provider service",
+          "title": "AWS Credentials Provider Service",
           "oneOf": [
             {
               "const": "",
@@ -498,7 +534,7 @@
       "iconBackgroundColor": "#8B5CF6",
       "type": "kafka",
       "label": "Kafka (Read)",
-      "tooltipText": "Pulls data from a kafka topic",
+      "tooltipText": "Pulls data from a kafka topic (Connect-to-source-kafka)",
       "order": 5
     },
     "config": {
@@ -506,11 +542,11 @@
       "properties": {
         "topics": {
           "type": "string",
-          "title": "Kafka topics comma separated"
+          "title": "Kafka Topics Comma Separated"
         },
         "groupId": {
           "type": "string",
-          "title": "Consumer Group Id",
+          "title": "Consumer Group ID",
           "default": "${neoDataflowId}"
         },
         "Header": {
@@ -538,7 +574,7 @@
         },
         "kafkaConnectionService": {
           "type": "string",
-          "title": "Kafka client service to connect to server",
+          "title": "Kafka Client Service to Connect to Server",
           "oneOf": [
             {
               "const": "e82c0901-019a-1000-0000-000024383183",
@@ -587,7 +623,7 @@
       "iconBackgroundColor": "#8B5CF6",
       "type": "kafka",
       "label": "Kafka (Write)",
-      "tooltipText": "Kafka push connect to destination",
+      "tooltipText": "Kafka push connect to destination (Connect-to-destination-kafka)",
       "order": 6
     },
     "config": {
@@ -595,7 +631,7 @@
       "properties": {
         "kafkaConnectionService": {
           "type": "string",
-          "title": "Kafka client service to connect to server",
+          "title": "Kafka Client Service to Connect to Server",
           "oneOf": [
             {
               "const": "e82c0901-019a-1000-0000-000024383183",
@@ -612,11 +648,11 @@
         },
         "topics": {
           "type": "string",
-          "title": "Kafka topic"
+          "title": "Kafka Topic"
         },
         "kafkakey": {
           "type": "string",
-          "title": "Kafka key"
+          "title": "Kafka Key"
         },
         "Header": {
           "type": "string",
@@ -664,7 +700,7 @@
       "iconBackgroundColor": "#000000",
       "type": "transform",
       "label": "Transform (CSV to JSON)",
-      "tooltipText": "CSV → JSON transformer with optional sorting/grouping",
+      "tooltipText": "CSV \u2192 JSON transformer with optional sorting/grouping (CSV-to-JSON-Converter)",
       "order": 7
     },
     "config": {
@@ -691,10 +727,17 @@
           "description": "Comma separated header order"
         },
         "alphabeticalSort": {
-          "type": "boolean",
+          "type": "string",
           "title": "Alphabetical sort?",
           "description": "If true, headers are sorted alphabetically",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "groupSize": {
           "type": "number",
@@ -706,31 +749,6 @@
           "type": "string",
           "title": "Group By",
           "description": "Fields to group by (comma separated)"
-        },
-        "attribution_type": {
-          "type": "string",
-          "title": "attribution type"
-        },
-        "attribution_code": {
-          "type": "string",
-          "title": "attribution code"
-        },
-        "header_value": {
-          "type": "string",
-          "title": "header value to pass"
-        },
-        "child_till_code": {
-          "type": "string",
-          "title": "child org till"
-        },
-        "child_org_id": {
-          "type": "string",
-          "title": "child org Id"
-        },
-        "lineNos": {
-          "type": "string",
-          "title": "lineNo parsing",
-          "default": "$[0].LINE_NO"
         },
         "JsonPath Expression": {
           "type": "string",
@@ -749,13 +767,45 @@
           "uiSchema": {
             "customComponent": "CapSelect"
           }
+        },
+        "attribution_type": {
+          "type": "string",
+          "title": "Attribution Type"
+        },
+        "attribution_code": {
+          "type": "string",
+          "title": "Attribution Code"
+        },
+        "header_value": {
+          "type": "string",
+          "title": "Header Value to Pass"
+        },
+        "child_till_code": {
+          "type": "string",
+          "title": "Child Org Till"
+        },
+        "child_org_id": {
+          "type": "string",
+          "title": "Child Org ID"
+        },
+        "lineNos": {
+          "type": "string",
+          "title": "Line No Parsing",
+          "default": "$[0].LINE_NO"
         }
       },
       "advancedSection": {
         "showAdvancedSection": true,
         "title": "Advanced Properties",
         "description": "Advanced properties for CSV to JSON. Make changes only if you know what you are doing.",
-        "fields": ["attribution_type", "attribution_code", "header_value", "child_till_code", "child_org_id", "lineNos", "JsonPath Expression", "split response"]
+        "fields": [
+          "attribution_type",
+          "attribution_code",
+          "header_value",
+          "child_till_code",
+          "child_org_id",
+          "lineNos"
+        ]
       },
       "required": [
         "fileType",
@@ -778,7 +828,7 @@
       "iconBackgroundColor": "#FFFFFF",
       "type": "transform",
       "label": "Transform (CSV to XML)",
-      "tooltipText": "CSV to XML block",
+      "tooltipText": "CSV to XML block (CSV-to-XML-Converter)",
       "order": 8
     },
     "config": {
@@ -790,7 +840,7 @@
         },
         "xmlFileName": {
           "type": "string",
-          "title": "XML file name"
+          "title": "XML File Name"
         },
         "xmlRepeatingComponent": {
           "type": "string",
@@ -834,7 +884,7 @@
       "iconBackgroundColor": "#10B981",
       "type": "decrypt",
       "label": "PGP Decrypt",
-      "tooltipText": "Decryption block for secure content",
+      "tooltipText": "Decryption block for secure content (Decrypt-data)",
       "order": 9
     },
     "config": {
@@ -899,7 +949,7 @@
       "iconBackgroundColor": "#EF4444",
       "type": "encrypt",
       "label": "PGP Encrypt",
-      "tooltipText": "Encryption block",
+      "tooltipText": "Encryption block (Encrypt-data)",
       "order": 10
     },
     "config": {
@@ -964,7 +1014,7 @@
       "iconBackgroundColor": "#E62E71",
       "type": "validation",
       "label": "Databricks (Validation)",
-      "tooltipText": "Data validation block that optionally triggers a Databricks job and uploads data to S3.",
+      "tooltipText": "Data validation block that optionally triggers a Databricks job and uploads data to S3 (Data-Validation-Block)",
       "order": 11
     },
     "config": {
@@ -972,16 +1022,23 @@
       "properties": {
         "jobId": {
           "type": "string",
-          "title": "DataBricks JobId",
+          "title": "Databricks Job ID",
           "default": "",
           "uiSchema": {
             "customComponent": "ConfigManagerSelect"
           }
         },
         "isEnabled": {
-          "type": "boolean",
+          "type": "string",
           "title": "Is Data Validation enabled?",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         }
       },
       "advancedSection": {
@@ -1009,8 +1066,8 @@
       "iconBackgroundColor": "#E62E71",
       "type": "databricks",
       "label": "Databricks (Jobs)",
-      "tooltipText": "Databricks block",
-      "order": 12
+      "tooltipText": "Databricks block (Databricks-Job-trigger-and-status)",
+      "order": 21
     },
     "config": {
       "type": "object",
@@ -1025,11 +1082,11 @@
         },
         "dataBricksProcessedFilesPath": {
           "type": "string",
-          "title": "dataBricks Processed Files Path"
+          "title": "Databricks Processed Files Path"
         },
         "dataBricksToken": {
           "type": "string",
-          "title": "dataBricksToken",
+          "title": "Databricks Token",
           "useSecret": true,
           "uiSchema": {
             "customComponent": "ConfigManagerSelect"
@@ -1037,7 +1094,7 @@
         },
         "dataBricksUrl": {
           "type": "string",
-          "title": "dataBricksUrl"
+          "title": "Databricks URL"
         }
       },
       "advancedSection": {
@@ -1069,7 +1126,7 @@
       "iconBackgroundColor": "#8B5CF6",
       "type": "filter",
       "label": "Filter",
-      "tooltipText": "Filters data based on conditions",
+      "tooltipText": "Filters data based on conditions (Filter-Data)",
       "order": 13
     },
     "config": {
@@ -1107,7 +1164,7 @@
       "iconBackgroundColor": "#8B5CF6",
       "type": "filter",
       "label": "Filter (Hidden)",
-      "tooltipText": "Filters data based on condition hidden",
+      "tooltipText": "Filters data based on condition hidden (Filter-Data)",
       "order": 14
     },
     "config": {
@@ -1145,7 +1202,7 @@
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
       "label": "Join files (2)",
-      "tooltipText": "Join two files based on specified headers",
+      "tooltipText": "Join two files based on specified headers (Join-Data)",
       "order": 15
     },
     "config": {
@@ -1202,12 +1259,28 @@
           }
         },
         "useAlphabeticalSort": {
-          "type": "boolean",
-          "title": "Use Alphabetical Sort"
+          "type": "string",
+          "title": "Use Alphabetical Sort",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "isMergeBasedOnName": {
-          "type": "boolean",
-          "title": "Merge based on common Name"
+          "type": "string",
+          "title": "Merge based on common Name",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileTemplate1": {
           "type": "string",
@@ -1218,14 +1291,28 @@
           "title": "Merge based on common Name Template File Two"
         },
         "isHeaderlessFile1": {
-          "type": "boolean",
+          "type": "string",
           "title": "File One is Headerless",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "isHeaderlessFile2": {
-          "type": "boolean",
-          "title": "File two is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File Two is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders1": {
           "type": "string",
@@ -1292,7 +1379,7 @@
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
       "label": "Join files (3)",
-      "tooltipText": "Join three files based on specified headers",
+      "tooltipText": "Join three files based on specified headers (Join-Data)",
       "order": 16
     },
     "config": {
@@ -1373,31 +1460,60 @@
           "title": "File One Mention Header names(for use in mapping and expressions)"
         },
         "isHeaderlessFile1": {
-          "type": "boolean",
+          "type": "string",
           "title": "File One is Headerless",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders2": {
           "type": "string",
           "title": "File Two Mention Header names(for use in mapping and expressions)"
         },
         "isHeaderlessFile2": {
-          "type": "boolean",
-          "title": "File two is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File Two is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "isHeaderlessFile3": {
-          "type": "boolean",
-          "title": "File three is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File Three is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders3": {
           "type": "string",
           "title": "File Three Mention Header names(for use in mapping and expressions)"
         },
         "isMergeBasedOnName": {
-          "type": "boolean",
-          "title": "Merge based on common Name"
+          "type": "string",
+          "title": "Merge based on common Name",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileTemplate1": {
           "type": "string",
@@ -1412,8 +1528,16 @@
           "title": "Merge based on common Name Template File Three"
         },
         "useAlphabeticalSort": {
-          "type": "boolean",
-          "title": "Use Alphabetical Sort"
+          "type": "string",
+          "title": "Use Alphabetical Sort",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         }
       },
       "advancedSection": {
@@ -1451,7 +1575,7 @@
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
       "label": "Join files (4)",
-      "tooltipText": "Join four files based on specified headers",
+      "tooltipText": "Join four files based on specified headers (Join-Data)",
       "order": 17
     },
     "config": {
@@ -1537,50 +1661,92 @@
           "title": "Output Filename"
         },
         "isHeaderlessFile1": {
-          "type": "boolean",
-          "title": "File one is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File One is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders1": {
           "type": "string",
           "title": "File One Mention Header names(for use in mapping and expressions)"
         },
         "isHeaderlessFile2": {
-          "type": "boolean",
-          "title": "File two is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File Two is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders2": {
           "type": "string",
           "title": "File Two Mention Header names(for use in mapping and expressions)"
         },
         "isHeaderlessFile3": {
-          "type": "boolean",
-          "title": "File three is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File Three is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders3": {
           "type": "string",
           "title": "File Three Mention Header names(for use in mapping and expressions)"
         },
         "isHeaderlessFile4": {
-          "type": "boolean",
-          "title": "File four is Headerless",
-          "default": false
+          "type": "string",
+          "title": "File Four is Headerless",
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileHeaders4": {
           "type": "string",
           "title": "File Four Mention Header names(for use in mapping and expressions)"
         },
         "useAlphabeticalSort": {
-          "type": "boolean",
+          "type": "string",
           "title": "Use Alphabetical Sort",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "isMergeBasedOnName": {
-          "type": "boolean",
+          "type": "string",
           "title": "Merge based on common Name",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "fileTemplate1": {
           "type": "string",
@@ -1636,7 +1802,7 @@
       "iconBackgroundColor": "#F59E0B",
       "type": "kafka",
       "label": "Event notification (Read)",
-      "tooltipText": "Event Notification Block",
+      "tooltipText": "Event Notification Block (Connect-to-source)",
       "order": 18
     },
     "config": {
@@ -1644,11 +1810,14 @@
       "properties": {
         "kafkaTopics": {
           "type": "string",
-          "title": "Kafka topics comma separated"
+          "title": "Kafka Topics Comma Separated",
+          "uiSchema": {
+            "customComponent": "EventNotificationSelect"
+          }
         },
         "groupId": {
           "type": "string",
-          "title": "Consumer Group Id",
+          "title": "Consumer Group ID",
           "default": "${neoDataflowId}"
         }
       },
@@ -1679,7 +1848,7 @@
       "iconBackgroundColor": "#8B5CF6",
       "type": "kafka",
       "label": "Kafka Event (Write)",
-      "tooltipText": "Event Publish to Kafka",
+      "tooltipText": "Event Publish to Kafka (Connect-to-destination)",
       "order": 19
     },
     "config": {
@@ -1687,7 +1856,7 @@
       "properties": {
         "kafkaConnectionService": {
           "type": "string",
-          "title": "Kafka client service to connect to server",
+          "title": "Kafka Client Service to Connect to Server",
           "oneOf": [
             {
               "const": "e82c0901-019a-1000-0000-000024383183",
@@ -1704,12 +1873,12 @@
         },
         "kafkaTopics": {
           "type": "string",
-          "title": "Kafka topic",
+          "title": "Kafka Topic",
           "default": ""
         },
         "kafkakey": {
           "type": "string",
-          "title": "Kafka key"
+          "title": "Kafka Key"
         },
         "Header": {
           "type": "string",
@@ -1757,7 +1926,7 @@
       "iconBackgroundColor": "#6366F1",
       "type": "transform",
       "label": "Hashing (CSV)",
-      "tooltipText": "Hash csv data cell by cell using the specified hashing algorithms",
+      "tooltipText": "Hash csv data cell by cell using the specified hashing algorithms (Hash-csv-fields)",
       "order": 20
     },
     "config": {
@@ -1792,7 +1961,7 @@
         },
         "HeadersToBeHashed": {
           "type": "string",
-          "title": "HeadersToBeHashed",
+          "title": "Headers to Be Hashed",
           "description": "Headers needs to be hashed"
         },
         "Delimiter": {
@@ -1829,8 +1998,8 @@
       "iconBackgroundColor": "#F97316",
       "type": "api",
       "label": "API request",
-      "tooltipText": "OAuth-based API calls with rate limiting and retries",
-      "order": 21
+      "tooltipText": "OAuth-based API calls with rate limiting and retries (Connect-to-destination)",
+      "order": 12
     },
     "config": {
       "type": "object",
@@ -2023,7 +2192,7 @@
       "iconBackgroundColor": "#14B8A6",
       "type": "api",
       "label": "Iris Audience Refresh (FTP)",
-      "tooltipText": "Iris FTP Audience Refresh",
+      "tooltipText": "Iris FTP Audience Refresh (Destination-Iris-Audience)",
       "order": 22
     },
     "config": {
@@ -2085,7 +2254,7 @@
       "iconBackgroundColor": "#6366F1",
       "type": "transform",
       "label": "JSLT",
-      "tooltipText": "Transform Block",
+      "tooltipText": "Transform Block (Transform-data)",
       "order": 23
     },
     "config": {
@@ -2124,7 +2293,7 @@
       "iconBackgroundColor": "#FEC52E",
       "type": "transform",
       "label": "JOLT",
-      "tooltipText": "Transform Block using jolt",
+      "tooltipText": "Transform Block using jolt (Transform-data)",
       "order": 24
     },
     "config": {
@@ -2151,80 +2320,6 @@
   },
   {
     "_id": {
-      "$oid": "697a05726c43834534fb7f45"
-    },
-    "id": "neo_block",
-    "context": "connectplus",
-    "class": "executor",
-    "uiSpecs": {
-      "isMultiPath": false,
-      "isDisabled": false,
-      "iconType": "org",
-      "iconBackgroundColor": "#0EA5E9",
-      "type": "neo",
-      "label": "Neo API Call",
-      "tooltipText": "Call Neo API, optionally split response, push to Kafka",
-      "order": 25
-    },
-    "config": {
-      "type": "object",
-      "properties": {
-        "neoDataFlows": {
-          "type": "string",
-          "title": "Neo Data Flows URL"
-        },
-        "split response": {
-          "type": "string",
-          "title": "Split Response",
-          "description": "Whether to split the response JSON",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "Authorization": {
-          "type": "string",
-          "title": "Authorization",
-          "description": "Authorization header",
-          "default": "Basic ${ten:append('product_sdk_user@capillarytech.com'):base64Encode()}"
-        },
-        "Max Retry": {
-          "type": "string",
-          "title": "Max Retry",
-          "description": "Maximum retry attempts",
-          "default": "10"
-        },
-        "Extra Retry Error Codes": {
-          "type": "string",
-          "title": "Extra Retry Error Codes",
-          "description": "HTTP codes that must retry",
-          "default": "429"
-        },
-        "Extra No Retry Error Codes": {
-          "type": "string",
-          "title": "Extra No Retry Error Codes",
-          "description": "HTTP codes that must NOT retry",
-          "default": "400"
-        }
-      },
-      "advancedSection": {
-        "showAdvancedSection": false,
-        "title": "Advanced Properties",
-        "description": "Advanced properties for Neo API Call",
-        "fields": []
-      },
-      "required": [
-        "neoDataFlows",
-        "Authorization"
-      ]
-    }
-  },
-  {
-    "_id": {
       "$oid": "6613c58296ddbc00126b2d86"
     },
     "id": "ok_file_3",
@@ -2237,7 +2332,7 @@
       "iconBackgroundColor": "#22C55E",
       "type": "file",
       "label": "OK File",
-      "tooltipText": "Ok File processor",
+      "tooltipText": "Ok File processor (Ok-file)",
       "order": 26
     },
     "config": {
@@ -2266,7 +2361,7 @@
       "iconBackgroundColor": "#06B6D4",
       "type": "transform",
       "label": "Split",
-      "tooltipText": "Splits input json to multiple flow files",
+      "tooltipText": "Splits input json to multiple flow files (Optional-split)",
       "order": 27
     },
     "config": {
@@ -2317,7 +2412,7 @@
       "iconBackgroundColor": "#6366F1",
       "type": "transform",
       "label": "Transform (Headers)",
-      "tooltipText": "Header and expression based data manipulation",
+      "tooltipText": "Header and expression based data manipulation (Define-headers-and-transform-data)",
       "order": 28
     },
     "config": {
@@ -2343,9 +2438,16 @@
           "default": "{}"
         },
         "isHeaderless": {
-          "type": "boolean",
+          "type": "string",
           "title": "Is the file headerless?",
-          "default": false
+          "default": "false",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
         },
         "headerlessMapping": {
           "type": "string",
@@ -2381,7 +2483,7 @@
       "iconBackgroundColor": "#FFFFFF",
       "type": "sftp",
       "label": "SFTP (Listing)",
-      "tooltipText": "Poll SFTP server and fetch the source file satisfying regex for reconciliation",
+      "tooltipText": "Poll SFTP server and fetch the source file satisfying regex for reconciliation (Connect-to-source)",
       "order": 29
     },
     "config": {
@@ -2479,7 +2581,7 @@
       "iconBackgroundColor": "#64748B",
       "type": "trigger",
       "label": "Cron",
-      "tooltipText": "Cron Based Trigger",
+      "tooltipText": "Cron Based Trigger (Connect-to-source)",
       "order": 30
     },
     "config": {
