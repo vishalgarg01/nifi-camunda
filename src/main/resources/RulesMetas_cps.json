@@ -58,13 +58,7 @@
           "type": "string",
           "title": "Filename Pattern",
           "description": "Regex used to match remote files",
-          "enum": [
-            ".*.csv",
-            ".*"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
+          "default": ".*.csv"
         },
         "processedDirectory": {
           "type": "string",
@@ -770,23 +764,28 @@
         },
         "attribution_type": {
           "type": "string",
-          "title": "Attribution Type"
+          "title": "Attribution Type",
+          "default": ""
         },
         "attribution_code": {
           "type": "string",
-          "title": "Attribution Code"
+          "title": "Attribution Code",
+          "default": ""
         },
         "header_value": {
           "type": "string",
-          "title": "Header Value to Pass"
+          "title": "Header Value to Pass",
+          "default": ""
         },
         "child_till_code": {
           "type": "string",
-          "title": "Child Org Till"
+          "title": "Child Org Till",
+          "default": ""
         },
         "child_org_id": {
           "type": "string",
-          "title": "Child Org ID"
+          "title": "Child Org ID",
+          "default": ""
         },
         "lineNos": {
           "type": "string",
@@ -2112,7 +2111,8 @@
         "additionalHeaders": {
           "type": "string",
           "title": "Additional Headers",
-          "description": "Additional headers JSON"
+          "description": "Additional headers JSON",
+          "default": ""
         },
         "rate": {
           "type": "string",
@@ -2600,6 +2600,130 @@
         "fields": []
       },
       "required": []
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6613c58296ddbc00126b2d29"
+    },
+    "id": "arya_call",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "http",
+      "iconBackgroundColor": "#F97316",
+      "type": "api",
+      "label": "Arya call",
+      "tooltipText": "Call Intouch user onboarding endpoint (Connect-to-destination)",
+      "order": 31
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "apiEndPoint": {
+          "type": "string",
+          "title": "API Endpoint",
+          "description": "Relative endpoint path"
+        },
+        "apiBaseUrl": {
+          "type": "string",
+          "title": "API Base URL",
+          "default": "{intouch_url}"
+        },
+        "apiMethod": {
+          "type": "string",
+          "title": "API Method",
+          "enum": [
+            "POST",
+            "PUT"
+          ],
+          "default": "POST",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "aryaBaseUrl": {
+          "type": "string",
+          "title": "Token URL",
+          "description": "Token URL for arya call",
+          "default": "{intouch_url}"
+        },
+        "bulkSupport": {
+          "type": "string",
+          "title": "Bulk Support",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "requestSplitPath": {
+          "type": "string",
+          "title": "Request Split Path",
+          "description": "JSONPath to split outgoing requests",
+          "default": "$.*"
+        },
+        "responseSplitPath": {
+          "type": "string",
+          "title": "Response Split Path",
+          "description": "JSONPath to split responses",
+          "default": "$.*"
+        },
+        "recoverableErrorCodes": {
+          "type": "string",
+          "title": "Recoverable Error Codes",
+          "description": "Comma separated recoverable HTTP status codes",
+          "default": "521,502,503,504"
+        },
+        "parsePathMap": {
+          "type": "string",
+          "title": "Parse Path Map",
+          "description": "JSONPath map for parsing responses",
+          "default": "{\"status_code\":\"$.['errors'].*.code\",\"error_message\":\"$.['errors'].*.message\",\"entity_id\":\"$.Id\"}"
+        },
+        "yieldingErrorCodes": {
+          "type": "string",
+          "title": "Yielding Error Codes",
+          "description": "Comma separated yielding HTTP status codes",
+          "default": "429"
+        },
+        "maxRetries": {
+          "type": "string",
+          "title": "Max Retries",
+          "description": "Maximum retry attempts",
+          "default": "3"
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for arya HTTP API Call. Make changes only if you know what you are doing.",
+        "fields": [
+          "apiBaseUrl",
+          "bulkSupport",
+          "requestSplitPath",
+          "responseSplitPath",
+          "parsePathMap",
+          "recoverableErrorCodes",
+          "yieldingErrorCodes",
+          "maxRetries"
+        ]
+      },
+      "required": [
+        "apiEndPoint",
+        "apiBaseUrl",
+        "apiMethod",
+        "aryaBaseUrl",
+        "bulkSupport",
+        "requestSplitPath",
+        "responseSplitPath",
+        "parsePathMap"
+      ]
     }
   }
 ]

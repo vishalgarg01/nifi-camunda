@@ -418,7 +418,9 @@ public class NifiMigrationService {
                         oldBlock.getName(), info.getProcessorName());
                 continue;
             }
-            String processorTypeForApi = "com.capillary.foundation.processors.OAuthClientProcessor";
+            String processorTypeForApi = (info.getProcessorClass().contains("InvokeHttp") && oldBlock.getType().startsWith("neo_transformer") )
+                    ? "com.capillary.foundation.processors.OAuthClientProcessor"
+                    : info.getProcessorClass();
             ProcessorConcurrencyRequest request = new ProcessorConcurrencyRequest();
             request.setNeoDataflowId(neoDataflowId);
             request.setNeoVersionId(neoVersionId);
@@ -501,6 +503,7 @@ public class NifiMigrationService {
                 put("groupSize", Arrays.asList("Group size", "Group Size"));
                 put("sortHeaders", Arrays.asList("Sort"));
                 put("alphabeticalSort", Arrays.asList("Alphabetical Sort"));
+                put("publicKeyUserId", Arrays.asList("pubUserId"));
             }});
 
     /**
@@ -671,17 +674,22 @@ public class NifiMigrationService {
             if (neo.getConfig() == null) continue;
             String type = neo.getType();
             if ("http_write".equals(type)) {
-                neo.getConfig().put("clientKey", "3Ml3wkihs3YehNDz93rkJ9W45");
-                neo.getConfig().put("clientSecret", "E9PL2nbrZ2n3GSQhAPVTskLFCky0mQRxS8iULBBj");
+                neo.getConfig().put("clientKey", "BjXodKPYCbowa7cr02Od0ZwKT");
+                neo.getConfig().put("clientSecret", "GNnZBoFWwJGeTm2kYBjhVfoyfQtjBUm2djrhaywf");
 
             }
-//            else if ("sftp_read".equals(type)) {
-//                neo.getConfig().put("username", "capillary");
-//                neo.getConfig().put("password", "captech123");
-//                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest4/source");
-//                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest4/process");
-//                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest4/error");
-//            }
+            else if ("sftp_read".equals(type)) {
+                neo.getConfig().put("username", "capillary");
+                neo.getConfig().put("password", "captech123");
+                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest4/source");
+                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest4/process");
+                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest4/error");
+            }
+            else if ("sftp_write".equals(type)) {
+                neo.getConfig().put("username", "capillary");
+                neo.getConfig().put("password", "captech123");
+                neo.getConfig().put("remotePath", "/Capillary testing/vtest4/error");
+            }
         }
     }
 
@@ -1289,7 +1297,7 @@ public class NifiMigrationService {
         mapping.put("ok_file", "ok_file_3");
         mapping.put("fetch_sftp", "sftp_read");
         mapping.put("sftp_push_hidden", "sftp_write");
-        mapping.put("intouch_transaction_v2_1", "http_write");
+        mapping.put("intouch_transaction_v2_1", "arya_call");
         mapping.put("retro_destination", "http_write");
         mapping.put("neo_transformer", "http_write");
         mapping.put("kafka_connect_to_source", "kafka_topic_read");
