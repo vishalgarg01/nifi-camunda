@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "EsRqRo3YFndaKhIFeo1DLXcFI";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "62TxYZijwcujh4omFc5NZIwWz8SOomhPB9JyVOGc";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "9Og2JxcBeyoLK4RUBbPur8wS2";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "N8pTOaCOMUVuEfLDyaWKQJloi1cRAB6n7GCxlGP9";
     private static final String DEFAULT_HTTP_WRITE_API_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final String DEFAULT_HTTP_WRITE_OAUTH_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
@@ -244,6 +244,11 @@ public class NifiMigrationService {
                 String jsltScript = null;
                 String recordGroupBySource = null;
                 String sortHeaderSource = null;
+                String attributionType = transformProps.getAttributionType();
+                String attributionCode = transformProps.getAttributionCode();
+                String headerValue = transformProps.getHeaderValue();
+                String childTillCode = transformProps.getChildTillCode();
+                String childOrgId = transformProps.getChildOrgId();
                 try {
                     if (transformProps.getHeaderMappingJson() != null && !transformProps.getHeaderMappingJson().isEmpty()) {
                         jsltScript = JsltMappingUtil.fromHeaderMappingWithExpressions(
@@ -263,6 +268,19 @@ public class NifiMigrationService {
                                 transformProps.getSortHeaders(),
                                 transformProps.getHeaderMappingJson());
                     }
+                    if (transformProps.getHeaderMappingJson() != null && !transformProps.getHeaderMappingJson().isEmpty()) {
+                        String resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(attributionType, transformProps.getHeaderMappingJson());
+                        if (resolved != null) attributionType = resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(attributionCode, transformProps.getHeaderMappingJson());
+                        if (resolved != null) attributionCode = resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(headerValue, transformProps.getHeaderMappingJson());
+                        if (resolved != null) headerValue = resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(childTillCode, transformProps.getHeaderMappingJson());
+                        if (resolved != null) childTillCode = resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(childOrgId, transformProps.getHeaderMappingJson());
+                        if (resolved != null) childOrgId = resolved;
+                    }
                 } catch (Exception ex) {
                     log.error("[migrateDataflow] Transform JSLT/group-by generation failed: {}", ex.getMessage());
                     resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
@@ -280,11 +298,11 @@ public class NifiMigrationService {
                         emptyJsonToNull(transformProps.getGroupSize()),
                         sortHeaderSource,
                         transformProps.getAlphabeticalSort(),
-                        transformProps.getAttributionType(),
-                        transformProps.getAttributionCode(),
-                        transformProps.getHeaderValue(),
-                        transformProps.getChildTillCode(),
-                        transformProps.getChildOrgId(),
+                        attributionType,
+                        attributionCode,
+                        headerValue,
+                        childTillCode,
+                        childOrgId,
                         transformProps.getLineNo(),
                         splitResponse);
             }
@@ -308,7 +326,7 @@ public class NifiMigrationService {
 
             log.info("[migrateDataflow] Building neo blocks from detail");
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
-//            applyHardcodedValuesForNeoBlocks(neoBlocks);
+            applyHardcodedValuesForNeoBlocks(neoBlocks);
             applyConfigManagerSelectValues(sourceWorkspace,
                     detail != null ? detail.getName() : summary.getName(),
                     summary.getUuid(),
@@ -318,7 +336,7 @@ public class NifiMigrationService {
             VersionUpdateRequest updateRequest = new VersionUpdateRequest();
             updateRequest.setBlocks(neoBlocks);
             if(scheduleCron.equalsIgnoreCase("cron_not_set")){
-                scheduleCron = "0/2 * * * * ?";
+                scheduleCron = "*/2 * * * * ?";
             }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
             updateRequest.setTag("testingFlows");
@@ -674,8 +692,8 @@ public class NifiMigrationService {
             if (neo.getConfig() == null) continue;
             String type = neo.getType();
             if ("http_write".equals(type)) {
-                neo.getConfig().put("clientKey", "BjXodKPYCbowa7cr02Od0ZwKT");
-                neo.getConfig().put("clientSecret", "GNnZBoFWwJGeTm2kYBjhVfoyfQtjBUm2djrhaywf");
+                neo.getConfig().put("clientKey", "9Og2JxcBeyoLK4RUBbPur8wS2");
+                neo.getConfig().put("clientSecret", "N8pTOaCOMUVuEfLDyaWKQJloi1cRAB6n7GCxlGP9");
 
             }
             else if ("sftp_read".equals(type)) {

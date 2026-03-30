@@ -69,6 +69,50 @@ public final class JsltMappingUtil {
     }
 
     /**
+     * Resolves a JSONPath expression from an EvaluateJsonPath property (e.g. "$.['attribution.store.identifierValue']")
+     * to the source column name using the header mapping.
+     * The mapping key is the output/mapped name; the value is the source CSV column name.
+     *
+     * @param jsonPathValue   JSONPath expression or plain field name from flow.xml
+     * @param headerMappingJson JSON header mapping (output key → source/input value)
+     * @return source column name if found and is a simple field; stripped field name if not in mapping; null if blank
+     */
+    public static String resolveJsonPathFieldToSourceName(String jsonPathValue, String headerMappingJson) throws IOException {
+        if (jsonPathValue == null || jsonPathValue.trim().isEmpty()) return null;
+        String fieldName = stripJsonPath(jsonPathValue.trim());
+        if (fieldName == null || fieldName.isEmpty()) return null;
+        Map<String, String> mapping = OBJECT_MAPPER.readValue(
+                headerMappingJson,
+                new TypeReference<LinkedHashMap<String, String>>() { }
+        );
+        String value = mapping.get(fieldName);
+        if (value == null) {
+            return fieldName;
+        }
+        return  value;
+    }
+
+    /**
+     * Strips JSONPath bracket/dot notation to extract the bare field name.
+     * E.g. "$.['field.name']" → "field.name", "$.field" → "field", "field" → "field".
+     */
+    private static String stripJsonPath(String s) {
+        if (s.startsWith("$.[")) {
+            String after = s.substring(3); // e.g. "'field.name']"
+            if (after.startsWith("'") && after.endsWith("']")) {
+                return after.substring(1, after.length() - 2);
+            }
+            if (after.endsWith("]")) {
+                return after.substring(0, after.length() - 1);
+            }
+        }
+        if (s.startsWith("$.")) {
+            return s.substring(2);
+        }
+        return s;
+    }
+
+    /**
      * Generates JSLT from header mapping JSON with optional date formatting.
      *
      * @param headerMappingJson   JSON object: key = output key, value = input key or exp{}/const{}
