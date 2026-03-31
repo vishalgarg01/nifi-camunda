@@ -25,6 +25,8 @@ public class TransformFlowProperties {
     private String headerValue;
     private String childTillCode;
     private String childOrgId;
+    private String rewardId;
+    private String brandId;
     private String joltSpec;
     private String lineNo;
 
@@ -154,5 +156,21 @@ public class TransformFlowProperties {
 
     public void setChildOrgId(String childOrgId) {
         this.childOrgId = childOrgId;
+    }
+
+    public String getRewardId() {
+        return rewardId;
+    }
+
+    public void setRewardId(String rewardId) {
+        this.rewardId = rewardId;
+    }
+
+    public String getBrandId() {
+        return brandId;
+    }
+
+    public void setBrandId(String brandId) {
+        this.brandId = brandId;
     }
 }

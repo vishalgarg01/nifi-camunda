@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "9Og2JxcBeyoLK4RUBbPur8wS2";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "N8pTOaCOMUVuEfLDyaWKQJloi1cRAB6n7GCxlGP9";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "yok8i682I1vb545Xq6dKnkooX";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "Y5uzjhGF52qFNTQyhvsy912q4mGro61J489JctC0";
     private static final String DEFAULT_HTTP_WRITE_API_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final String DEFAULT_HTTP_WRITE_OAUTH_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
@@ -249,6 +249,8 @@ public class NifiMigrationService {
                 String headerValue = transformProps.getHeaderValue();
                 String childTillCode = transformProps.getChildTillCode();
                 String childOrgId = transformProps.getChildOrgId();
+                String rewardId = transformProps.getRewardId();
+                String brandId = transformProps.getBrandId();
                 try {
                     if (transformProps.getHeaderMappingJson() != null && !transformProps.getHeaderMappingJson().isEmpty()) {
                         jsltScript = JsltMappingUtil.fromHeaderMappingWithExpressions(
@@ -280,6 +282,10 @@ public class NifiMigrationService {
                         if (resolved != null) childTillCode = resolved;
                         resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(childOrgId, transformProps.getHeaderMappingJson());
                         if (resolved != null) childOrgId = resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(rewardId, transformProps.getHeaderMappingJson());
+                        if (resolved != null) rewardId = resolved;
+                        resolved = JsltMappingUtil.resolveJsonPathFieldToSourceName(brandId, transformProps.getHeaderMappingJson());
+                        if (resolved != null) brandId = resolved;
                     }
                 } catch (Exception ex) {
                     log.error("[migrateDataflow] Transform JSLT/group-by generation failed: {}", ex.getMessage());
@@ -303,6 +309,8 @@ public class NifiMigrationService {
                         headerValue,
                         childTillCode,
                         childOrgId,
+                        rewardId,
+                        brandId,
                         transformProps.getLineNo(),
                         splitResponse);
             }
@@ -326,7 +334,7 @@ public class NifiMigrationService {
 
             log.info("[migrateDataflow] Building neo blocks from detail");
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
-            applyHardcodedValuesForNeoBlocks(neoBlocks);
+//            applyHardcodedValuesForNeoBlocks(neoBlocks);
             applyConfigManagerSelectValues(sourceWorkspace,
                     detail != null ? detail.getName() : summary.getName(),
                     summary.getUuid(),
@@ -692,8 +700,8 @@ public class NifiMigrationService {
             if (neo.getConfig() == null) continue;
             String type = neo.getType();
             if ("http_write".equals(type)) {
-                neo.getConfig().put("clientKey", "9Og2JxcBeyoLK4RUBbPur8wS2");
-                neo.getConfig().put("clientSecret", "N8pTOaCOMUVuEfLDyaWKQJloi1cRAB6n7GCxlGP9");
+                neo.getConfig().put("clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
+                neo.getConfig().put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
 
             }
             else if ("sftp_read".equals(type)) {
@@ -1124,6 +1132,8 @@ public class NifiMigrationService {
             if (ctx.getHeaderValue() != null) putByKey(config, "header_value", ctx.getHeaderValue());
             if (ctx.getChildTillCode() != null) putByKey(config, "child_till_code", ctx.getChildTillCode());
             if (ctx.getChildOrgId() != null) putByKey(config, "child_org_id", ctx.getChildOrgId());
+            if (ctx.getRewardId() != null) putByKey(config, "rewardId", ctx.getRewardId());
+            if (ctx.getBrandId() != null) putByKey(config, "brandId", ctx.getBrandId());
         } else if ("jslt".equals(part) && ctx.getJsltScript() != null) {
             putByKey(config, "transformation", ctx.getJsltScript());
         } else if ("jolt".equals(part) && ctx.getJoltSpec() != null) {
@@ -1383,6 +1393,12 @@ public class NifiMigrationService {
                 if (ctx.getChildOrgId() != null) {
                     setFieldValueByKeyword(block.getFields(), new String[]{"child_org_id", "childOrgId"}, ctx.getChildOrgId());
                 }
+                if (ctx.getRewardId() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"rewardId", "reward_id"}, ctx.getRewardId());
+                }
+                if (ctx.getBrandId() != null) {
+                    setFieldValueByKeyword(block.getFields(), new String[]{"brandId", "brand_id"}, ctx.getBrandId());
+                }
             } else if (id == JSLT_TRANSFORM_BLOCK_ID && ctx.getJsltScript() != null) {
                 setFieldValueByKeyword(block.getFields(), new String[]{"transformation", "JSLT Transform", "JSLT Script", "jsltScript", "transform"}, ctx.getJsltScript());
             } else if (id == JOLT_TRANSFORM_BLOCK_ID && ctx.getJoltSpec() != null) {
@@ -1418,14 +1434,16 @@ public class NifiMigrationService {
         private final String headerValue;
         private final String childTillCode;
         private final String childOrgId;
+        private final String rewardId;
+        private final String brandId;
         private final String lineNo;
         private final boolean splitResponse;
 
         TransformContext(String recordGroupBySource, String jsltScript, String joltSpec,
                          String groupSize, String sortHeaders, String alphabeticalSort,
                          String attributionType, String attributionCode, String headerValue,
-                         String childTillCode, String childOrgId, String lineNo,
-                         boolean splitResponse) {
+                         String childTillCode, String childOrgId, String rewardId, String brandId,
+                         String lineNo, boolean splitResponse) {
             this.recordGroupBySource = recordGroupBySource;
             this.jsltScript = jsltScript;
             this.joltSpec = joltSpec;
@@ -1437,6 +1455,8 @@ public class NifiMigrationService {
             this.headerValue = headerValue;
             this.childTillCode = childTillCode;
             this.childOrgId = childOrgId;
+            this.rewardId = rewardId;
+            this.brandId = brandId;
             this.lineNo = lineNo;
             this.splitResponse = splitResponse;
         }
@@ -1483,6 +1503,14 @@ public class NifiMigrationService {
 
         String getChildOrgId() {
             return childOrgId;
+        }
+
+        String getRewardId() {
+            return rewardId;
+        }
+
+        String getBrandId() {
+            return brandId;
         }
 
         String getLineNo() {

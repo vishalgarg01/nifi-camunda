@@ -45,6 +45,8 @@ public class FlowXmlTransformPropertiesExtractor {
     private static final String[] HEADER_VALUE_KEYS = {"header_value", "headerValue"};
     private static final String[] CHILD_TILL_CODE_KEYS = {"child_till_code", "childTillCode"};
     private static final String[] CHILD_ORG_ID_KEYS = {"child_org_id", "childOrgId"};
+    private static final String[] REWARD_ID_KEYS = {"rewardId", "reward_id"};
+    private static final String[] BRAND_ID_KEYS = {"brandId", "brand_id"};
 
     /** When choosing among multiple "Records Per Split" values, take one with numeric value less than this. */
     private static final int RECORDS_PER_SPLIT_MAX = 100;
@@ -177,6 +179,8 @@ public class FlowXmlTransformPropertiesExtractor {
         setIfPresentAnyKey(props, HEADER_VALUE_KEYS, out::setHeaderValue);
         setIfPresentAnyKey(props, CHILD_TILL_CODE_KEYS, out::setChildTillCode);
         setIfPresentAnyKey(props, CHILD_ORG_ID_KEYS, out::setChildOrgId);
+        setIfPresentAnyKey(props, REWARD_ID_KEYS, out::setRewardId);
+        setIfPresentAnyKey(props, BRAND_ID_KEYS, out::setBrandId);
     }
 
     private void setIfPresentAnyKey(Map<String, String> props, String[] keys, java.util.function.Consumer<String> setter) {
