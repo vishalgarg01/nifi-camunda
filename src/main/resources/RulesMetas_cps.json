@@ -148,7 +148,7 @@
       "advancedSection": {
         "showAdvancedSection": true,
         "title": "Advanced Properties",
-        "description": "Advanced properties for Consume SFTP Files. Make changes only if you know what you are doing.",
+        "description": "Advanced properties for Consume SFTP Files. Ensure you understand the impact before making changes.",
         "fields": [
           "private_key_path",
           "key_passphrase",
@@ -278,7 +278,7 @@
       "advancedSection": {
         "showAdvancedSection": true,
         "title": "Advanced Properties",
-        "description": "Advanced properties for SFTP (Write). Make changes only if you know what you are doing.",
+        "description": "Advanced properties for SFTP (Write). Ensure you understand the impact before making changes.",
         "fields": [
           "port",
           "outputFileName",
@@ -791,19 +791,31 @@
           "type": "string",
           "title": "Line No Parsing",
           "default": "$[0].LINE_NO"
+        },
+        "brandId": {
+          "type": "string",
+          "title": "brandId",
+          "default": "null"
+        },
+        "rewardId": {
+          "type": "string",
+          "title": "rewardId",
+          "default": "null"
         }
       },
       "advancedSection": {
         "showAdvancedSection": true,
         "title": "Advanced Properties",
-        "description": "Advanced properties for CSV to JSON. Make changes only if you know what you are doing.",
+        "description": "Advanced properties for CSV to JSON. Ensure you understand the impact before making changes.",
         "fields": [
           "attribution_type",
           "attribution_code",
           "header_value",
           "child_till_code",
           "child_org_id",
-          "lineNos"
+          "lineNos",
+          "rewardId",
+          "brandId"
         ]
       },
       "required": [
@@ -918,6 +930,25 @@
           "uiSchema": {
             "customComponent": "CapSelect"
           }
+        },
+        "unzipFiles": {
+          "type": "string",
+          "title": "Unzip Files",
+          "description": "If true, unzip incoming files",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "fileExtension": {
+          "type": "string",
+          "title": "Filename Extension",
+          "default": ".gpg",
+          "description": "provide extension of file as .zip in case of unzip file"
         }
       },
       "advancedSection": {
@@ -2144,7 +2175,7 @@
       "advancedSection": {
         "showAdvancedSection": true,
         "title": "Advanced Properties",
-        "description": "Advanced properties for OAuth HTTP API Call. Make changes only if you know what you are doing.",
+        "description": "Advanced properties for OAuth HTTP API Call. Ensure you understand the impact before making changes.",
         "fields": [
           "apiBaseUrl",
           "oAuthBaseUrl",
@@ -2702,7 +2733,7 @@
       "advancedSection": {
         "showAdvancedSection": true,
         "title": "Advanced Properties",
-        "description": "Advanced properties for arya HTTP API Call. Make changes only if you know what you are doing.",
+        "description": "Advanced properties for arya HTTP API Call. Ensure you understand the impact before making changes.",
         "fields": [
           "apiBaseUrl",
           "bulkSupport",

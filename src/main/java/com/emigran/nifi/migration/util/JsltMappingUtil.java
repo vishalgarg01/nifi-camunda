@@ -102,6 +102,9 @@ public final class JsltMappingUtil {
             if (after.startsWith("'") && after.endsWith("']")) {
                 return after.substring(1, after.length() - 2);
             }
+            if (after.startsWith("\"") && after.endsWith("\"]")) {
+                return after.substring(1, after.length() - 2);
+            }
             if (after.endsWith("]")) {
                 return after.substring(0, after.length() - 1);
             }

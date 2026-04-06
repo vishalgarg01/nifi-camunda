@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "yok8i682I1vb545Xq6dKnkooX";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "Y5uzjhGF52qFNTQyhvsy912q4mGro61J489JctC0";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "oAmO5MCEhO5ImpY9qnZmQktzg";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "xnE05sFVVwtlenrV6VxVvyeqULyiUryjSDpP95mE";
     private static final String DEFAULT_HTTP_WRITE_API_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final String DEFAULT_HTTP_WRITE_OAUTH_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
@@ -347,7 +347,7 @@ public class NifiMigrationService {
                 scheduleCron = "*/2 * * * * ?";
             }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
-            updateRequest.setTag("testingFlows");
+            updateRequest.setTag("migration");
             List<String> reportRecipients = newClient.getDataflowReportRecipients(summary.getUuid());
             if (!reportRecipients.isEmpty()) {
                 String recipientsCsv = String.join(",", reportRecipients);
