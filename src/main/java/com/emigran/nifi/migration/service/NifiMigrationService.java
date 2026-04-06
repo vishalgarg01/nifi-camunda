@@ -313,22 +313,7 @@ public class NifiMigrationService {
                         splitResponse);
             }
 
-            // New flow: create canvas dataflow -> get version -> update with blocks+schedule -> post-hook -> update concurrency
-            String neoDataflowId = neoRuleApiClient.createCanvasDataflow(detail.getName());
-            if (neoDataflowId == null) {
-                log.error("[migrateDataflow] Neo rule API not configured or create failed");
-                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
-                        "Neo rule API not configured or create canvas failed", null);
-                return;
-            }
 
-            String versionId = neoRuleApiClient.getFirstVersionId(neoDataflowId);
-            if (versionId == null) {
-                log.error("[migrateDataflow] Get versions failed");
-                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
-                        "Get versions failed", null);
-                return;
-            }
 
             log.info("[migrateDataflow] Building neo blocks from detail");
             List<NeoBlock> neoBlocks = buildNeoBlocks(detail, transformContext, summary.getUuid());
@@ -346,13 +331,30 @@ public class NifiMigrationService {
             }
             updateRequest.setSchedule(scheduleCron != null ? scheduleCron : "0 0/5 * * * ?");
             updateRequest.setTag("migration");
+
+            // New flow: create canvas dataflow -> get version -> update with blocks+schedule -> post-hook -> update concurrency
             List<String> reportRecipients = newClient.getDataflowReportRecipients(summary.getUuid());
             if (!reportRecipients.isEmpty()) {
                 String recipientsCsv = String.join(",", reportRecipients);
                 updateRequest.setUsersForReportingEmail(recipientsCsv);
-                log.info("[migrateDataflow] Reporting recipients found for dataflow {}: {}", neoDataflowId, recipientsCsv);
+                log.info("[migrateDataflow] found Reporting recipients for dataflow {}: {}", summary.getUuid(), recipientsCsv);
             } else {
-                log.info("[migrateDataflow] No reporting recipients found for dataflow {}", neoDataflowId);
+                log.info("[migrateDataflow] No reporting recipients found for dataflow {}", summary.getUuid());
+            }
+            String neoDataflowId = neoRuleApiClient.createCanvasDataflow(detail.getName(), reportRecipients);
+            if (neoDataflowId == null) {
+                log.error("[migrateDataflow] Neo rule API not configured or create failed");
+                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
+                        "Neo rule API not configured or create canvas failed", null);
+                return;
+            }
+
+            String versionId = neoRuleApiClient.getFirstVersionId(neoDataflowId);
+            if (versionId == null) {
+                log.error("[migrateDataflow] Get versions failed");
+                resultLogger.logFailure(sourceWorkspace.getName(), summary.getName(), summary.getUuid(),
+                        "Get versions failed", null);
+                return;
             }
 
             log.info("[migrateDataflow] Updating version with {} blocks", neoBlocks.size());
@@ -1133,6 +1135,7 @@ public class NifiMigrationService {
             if (ctx.getChildOrgId() != null) putByKey(config, "child_org_id", ctx.getChildOrgId());
             if (ctx.getRewardId() != null) putByKey(config, "rewardId", ctx.getRewardId());
             if (ctx.getBrandId() != null) putByKey(config, "brandId", ctx.getBrandId());
+            if(ctx.getLineNo() != null) putByKey(config, "lineNos", ctx.getLineNo());
         } else if ("jslt".equals(part) && ctx.getJsltScript() != null) {
             putByKey(config, "transformation", ctx.getJsltScript());
         } else if ("jolt".equals(part) && ctx.getJoltSpec() != null) {
@@ -1521,3 +1524,7 @@ public class NifiMigrationService {
         }
     }
 }
+
+
+//there is some issue with my migration script. I have a property name lineNo in TransformFlowProperties, but I am not setting this in baseName + "-csv".
+//So in my actual csv to json convert_csv_to_json block, I have a property name lineNos which is being set as default value as I am not setting TransformFlowProperties.lineNo to my lineNos property

@@ -9,14 +9,16 @@ public class CreateRuleRequest {
     private List<String> tags;
     private String applicationId;
     private String context;
+    private List<String> usersForReportingEmail;
 
     public CreateRuleRequest() {}
 
-    public CreateRuleRequest(String name, List<String> tags, String applicationId, String context) {
+    public CreateRuleRequest(String name, List<String> tags, String applicationId, String context, List<String> usersForReportingEmail) {
         this.name = name;
         this.tags = tags;
         this.applicationId = applicationId;
         this.context = context;
+        this.usersForReportingEmail = usersForReportingEmail;
     }
 
     public String getName() {
@@ -49,5 +51,12 @@ public class CreateRuleRequest {
 
     public void setContext(String context) {
         this.context = context;
+    }
+    public List<String> getUsersForReportingEmail() {
+        return usersForReportingEmail;
+    }
+
+    public void setUsersForReportingEmail(List<String> usersForReportingEmail) {
+        this.usersForReportingEmail = usersForReportingEmail;
     }
 }

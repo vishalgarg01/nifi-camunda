@@ -3,6 +3,7 @@ package com.emigran.nifi.migration.client;
 import com.emigran.nifi.migration.config.MigrationProperties;
 import com.emigran.nifi.migration.model.neo.*;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +35,7 @@ public class NeoRuleApiClient {
      * @param dataflowName name (same as old dataflow)
      * @return the created rule result id (_id), or null if creation failed
      */
-    public String createCanvasDataflow(String dataflowName) {
+    public String createCanvasDataflow(String dataflowName, List<String> reportRecipients) {
         String baseUrl = properties.getNeoRuleBaseUrl();
         if (baseUrl == null || baseUrl.isEmpty()) {
             log.warn("[NeoRuleApi] neo-rule base URL not configured; skipping create");
@@ -51,7 +52,8 @@ public class NeoRuleApiClient {
                 dataflowName,
                 Collections.singletonList("migration"),
                 properties.getNeoRuleApplicationId(),
-                properties.getNeoRuleContext());
+                properties.getNeoRuleContext(),
+                reportRecipients);
 
         HttpEntity<CreateRuleRequest> entity = new HttpEntity<>(body, buildHeaders());
         try {
