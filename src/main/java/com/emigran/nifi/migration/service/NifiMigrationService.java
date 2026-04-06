@@ -69,10 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "oAmO5MCEhO5ImpY9qnZmQktzg";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "xnE05sFVVwtlenrV6VxVvyeqULyiUryjSDpP95mE";
-    private static final String DEFAULT_HTTP_WRITE_API_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
-    private static final String DEFAULT_HTTP_WRITE_OAUTH_BASE_URL = "https://crm-nightly-new.cc.capillarytech.com";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "DbhP0h0JHNurOnhSpwBJExMmt";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "oOhKxVp8P0LTnPS5Dt8bgKBbMImk422shwTQ7FRk";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -530,6 +528,7 @@ public class NifiMigrationService {
                 put("sortHeaders", Arrays.asList("Sort"));
                 put("alphabeticalSort", Arrays.asList("Alphabetical Sort"));
                 put("publicKeyUserId", Arrays.asList("pubUserId"));
+                put("lineNos", Arrays.asList("lineNo", "lineNos"));
             }});
 
     /**
@@ -969,7 +968,7 @@ public class NifiMigrationService {
             baseDir = "./flow-cache";
         }
         String workspacePart = workspace != null && workspace.getId() != null ? workspace.getId().toString() : "unknown-workspace";
-        return Paths.get(baseDir, "config-manager", "workspace-" + workspacePart + ".json");
+        return Paths.get(baseDir, "config-manager/incrm", "workspace -" + workspacePart + ".json");
     }
 
     private static final class ConfigCache {
