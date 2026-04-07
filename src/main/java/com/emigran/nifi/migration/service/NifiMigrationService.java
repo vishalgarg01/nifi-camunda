@@ -168,12 +168,14 @@ public class NifiMigrationService {
                         .stream()
                         .filter(Workspace::isEnabled)
                         .filter(ws -> matchesWorkspace(ws, workspaceId))
+                        .filter(ws -> workspaceBelongsToOrg(ws, currentOrgId))
                         .collect(Collectors.toList());
             }
         } else {
             workspaces = oldClient.getWorkspaces()
                     .stream()
                     .filter(Workspace::isEnabled)
+                    .filter(ws -> workspaceBelongsToOrg(ws, currentOrgId))
                     .collect(Collectors.toList());
         }
         log.info("[migrateAllForCurrentOrg] Found {} workspace(s) to migrate for orgId={}", workspaces.size(), currentOrgId);
@@ -202,6 +204,13 @@ public class NifiMigrationService {
             return originalCookie.replaceAll("\\bOID=[^;]*", "OID=" + orgId);
         }
         return originalCookie + "; OID=" + orgId;
+    }
+
+    private static boolean workspaceBelongsToOrg(Workspace ws, String orgId) {
+        if (orgId == null || orgId.isEmpty()) return true;
+        if (ws.getOrganisations() == null || ws.getOrganisations().isEmpty()) return false;
+        return ws.getOrganisations().stream()
+                .anyMatch(org -> org.getId() != null && orgId.equals(org.getId().toString()));
     }
 
     private static boolean matchesWorkspace(Workspace ws, String workspaceId) {
