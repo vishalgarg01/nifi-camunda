@@ -87,15 +87,20 @@ public final class JsltMappingUtil {
         );
         String value = mapping.get(fieldName);
         if (value == null) {
-            return fieldName;
+            return wrapAsJsonPath(fieldName);
         }
-        return  value;
+        return wrapAsJsonPath(value);
     }
 
     /**
      * Strips JSONPath bracket/dot notation to extract the bare field name.
      * E.g. "$.['field.name']" → "field.name", "$.field" → "field", "field" → "field".
      */
+    private static String wrapAsJsonPath(String fieldName) {
+        if (fieldName == null || fieldName.isEmpty()) return fieldName;
+        return "$['" + fieldName + "']";
+    }
+
     private static String stripJsonPath(String s) {
         if (s.startsWith("$.[")) {
             String after = s.substring(3); // e.g. "'field.name']"
