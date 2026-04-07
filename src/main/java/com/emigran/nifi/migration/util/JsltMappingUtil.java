@@ -89,6 +89,9 @@ public final class JsltMappingUtil {
         if (value == null) {
             return wrapAsJsonPath(fieldName);
         }
+        if (!isSimpleFieldName(value)) {
+            return extractConstantValue(value);
+        }
         return wrapAsJsonPath(value);
     }
 
@@ -96,12 +99,30 @@ public final class JsltMappingUtil {
      * Strips JSONPath bracket/dot notation to extract the bare field name.
      * E.g. "$.['field.name']" → "field.name", "$.field" → "field", "field" → "field".
      */
+    /**
+     * Extracts the inner value from expressions like "const{TILL}", "exp{...}", etc.
+     * Returns the value between { and }, or the original string if no braces found.
+     */
+    private static String extractConstantValue(String value) {
+        if (value == null) return null;
+        int open = value.indexOf('{');
+        int close = value.lastIndexOf('}');
+        if (open >= 0 && close > open) {
+            return value.substring(open + 1, close);
+        }
+        return value;
+    }
+
     private static String wrapAsJsonPath(String fieldName) {
         if (fieldName == null || fieldName.isEmpty()) return fieldName;
         return "$['" + fieldName + "']";
     }
 
     private static String stripJsonPath(String s) {
+        // Handle $[0].['field.name'] or $[0].["field.name"] — strip array index prefix first
+        if (s.matches("^\\$\\[\\d+\\]\\..*")) {
+            s = "$" + s.substring(s.indexOf("].") + 1); // e.g. $.['field.name']
+        }
         if (s.startsWith("$.[")) {
             String after = s.substring(3); // e.g. "'field.name']"
             if (after.startsWith("'") && after.endsWith("']")) {
