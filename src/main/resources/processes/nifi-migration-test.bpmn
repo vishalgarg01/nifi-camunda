@@ -10,6 +10,11 @@
     <bpmn:startEvent id="StartEvent_1" name="Start">
       <bpmn:extensionElements>
         <camunda:formData>
+          <camunda:formField id="orgIds" label="Org IDs (comma-separated, optional)" type="string">
+            <camunda:properties>
+              <camunda:property id="camunda:optional" value="true"/>
+            </camunda:properties>
+          </camunda:formField>
           <camunda:formField id="workspaceId" label="Workspace ID (optional)" type="string">
             <camunda:properties>
               <camunda:property id="camunda:optional" value="true"/>
