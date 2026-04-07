@@ -21,7 +21,7 @@ public class MigrationResultLogger {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final File outputDir;
     private File outputFile;
-    private final File csvFile;
+    private File csvFile;
     private final List<Map<String, Object>> succeeded = new ArrayList<>();
     private final List<Map<String, Object>> failed = new ArrayList<>();
 
@@ -50,6 +50,16 @@ public class MigrationResultLogger {
 
     private void initOutputFile() {
         this.outputFile = new File(outputDir, "nifi-migration-" + Instant.now().toEpochMilli() + ".jsonl");
+    }
+
+    /**
+     * Switches the org context — updates the CSV file name to use the given orgId.
+     * Call before processing each org in a multi-org migration.
+     */
+    public synchronized void switchOrg(String orgId) {
+        String name = (orgId != null && !orgId.isEmpty()) ? orgId : "migration";
+        this.csvFile = new File(outputDir, name + ".csv");
+        initCsvHeader();
     }
 
     /**

@@ -145,4 +145,27 @@ public class MigrationProperties {
     public String getConfigManagerOrgId() {
         return configManagerOrgId;
     }
+
+    public void setConfigManagerOrgId(String configManagerOrgId) {
+        this.configManagerOrgId = configManagerOrgId;
+    }
+
+    public void setNeoRuleCookie(String neoRuleCookie) {
+        this.neoRuleCookie = neoRuleCookie;
+    }
+
+    /**
+     * Returns a copy of the current cookie string with the OID value replaced by the given orgId.
+     * If the cookie contains "OID=...", that segment is updated; otherwise "OID={orgId}" is appended.
+     */
+    public String buildCookieForOrg(String orgId) {
+        String cookie = getNeoRuleCookie();
+        if (cookie == null || cookie.isEmpty()) {
+            return "OID=" + orgId;
+        }
+        if (cookie.matches(".*\\bOID=[^;]*.*")) {
+            return cookie.replaceAll("\\bOID=[^;]*", "OID=" + orgId);
+        }
+        return cookie + "; OID=" + orgId;
+    }
 }

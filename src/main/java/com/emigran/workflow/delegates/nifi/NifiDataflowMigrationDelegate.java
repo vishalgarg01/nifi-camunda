@@ -25,15 +25,16 @@ public class NifiDataflowMigrationDelegate implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
         log.info("[NifiDataflowMigrationDelegate] execute START");
+        String orgIds = getStringVariable(execution, "orgIds");
         String workspaceId = getStringVariable(execution, "workspaceId");
         String dataflowId = getStringVariable(execution, "dataflowId");
-        if (workspaceId != null || dataflowId != null) {
-            log.info("[NifiDataflowMigrationDelegate] Migration scope: workspaceId={}, dataflowId={}", workspaceId, dataflowId);
+        if (orgIds != null || workspaceId != null || dataflowId != null) {
+            log.info("[NifiDataflowMigrationDelegate] Migration scope: orgIds={}, workspaceId={}, dataflowId={}", orgIds, workspaceId, dataflowId);
         } else {
             log.info("[NifiDataflowMigrationDelegate] Migration scope: all workspaces and dataflows");
         }
         log.info("[NifiDataflowMigrationDelegate] Calling migrationService.migrateAll");
-        String logPath = migrationService.migrateAll(workspaceId, dataflowId);
+        String logPath = migrationService.migrateAll(orgIds, workspaceId, dataflowId);
         String summaryPath = resultLogger.writeSummary();
         boolean hasFailures = resultLogger.hasFailures();
         if (hasFailures) {

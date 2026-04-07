@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "DbhP0h0JHNurOnhSpwBJExMmt";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "oOhKxVp8P0LTnPS5Dt8bgKBbMImk422shwTQ7FRk";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "gnPWPnAtggJSShhPQRSkKff3X";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "B7mRMzi7LM5anjAEUDQoLRIwQsSjsvPViQhfHLxX";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -102,23 +102,68 @@ public class NifiMigrationService {
     private static final Map<String, String> LEGACY_TO_NEW = buildLegacyToNewBlockTypes();
 
     /**
-     * Runs migration. If workspaceId is provided, only that workspace is migrated; otherwise all
-     * enabled workspaces. If both workspaceId and dataflowId are provided, only that dataflow (or
-     * those dataflows) in that workspace are migrated; otherwise all live dataflows in the selected workspace(s).
+     * Runs migration. If orgIds is provided, loops over each org — updating the org-id and
+     * cookie OID per org — then fetches enabled workspaces and dataflows for each.
+     * If workspaceId is provided, only that workspace is migrated; otherwise all enabled workspaces.
+     * If both workspaceId and dataflowId are provided, only those dataflows are migrated.
      *
+     * @param orgIds      optional; comma-separated org IDs to migrate; null = use configured org-id
      * @param workspaceId optional; workspace id (Long as string) or name to migrate; null = all
-     * @param dataflowId  optional; single dataflow UUID, or comma-separated list of dataflow UUIDs to migrate; only used when workspaceId is set; null = all
+     * @param dataflowId  optional; single dataflow UUID, or comma-separated list of dataflow UUIDs to migrate; null = all
      * @return path to the migration result log
      */
-    public String migrateAll(String workspaceId, String dataflowId) {
-        log.info("[migrateAll] START - workspaceId={}, dataflowId={}", workspaceId, dataflowId);
+    public String migrateAll(String orgIds, String workspaceId, String dataflowId) {
+        log.info("[migrateAll] START - orgIds={}, workspaceId={}, dataflowId={}", orgIds, workspaceId, dataflowId);
         resultLogger.clear();
+
+        String originalOrgId = properties.getConfigManagerOrgId();
+        String originalCookie = properties.getNeoRuleCookie();
+
+        List<String> orgList;
+        if (orgIds != null && !orgIds.trim().isEmpty()) {
+            orgList = Arrays.stream(orgIds.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+        } else {
+            orgList = Collections.singletonList(originalOrgId);
+        }
+
+        try {
+            for (String orgId : orgList) {
+                log.info("[migrateAll] Processing orgId={}", orgId);
+                properties.setConfigManagerOrgId(orgId);
+                properties.setNeoRuleCookie(buildCookieWithOid(originalCookie, orgId));
+                resultLogger.switchOrg(orgId);
+
+                try {
+                    migrateAllForCurrentOrg(workspaceId, dataflowId);
+                } catch (Throwable t) {
+                    log.error("[migrateAll] OrgId {} failed, continuing with next: {}", orgId, t.getMessage(), t);
+                    resultLogger.logFailure("(org=" + orgId + ")", "(org)", null,
+                            "Org migration failed: " + (t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName()), t);
+                }
+            }
+        } finally {
+            properties.setConfigManagerOrgId(originalOrgId);
+            properties.setNeoRuleCookie(originalCookie);
+        }
+
+        String path = resultLogger.getOutputPath();
+        log.info("[migrateAll] END - result log at {}", path);
+        return path;
+    }
+
+    private void migrateAllForCurrentOrg(String workspaceId, String dataflowId) {
+        String currentOrgId = properties.getConfigManagerOrgId();
+        log.info("[migrateAllForCurrentOrg] START - orgId={}, workspaceId={}, dataflowId={}", currentOrgId, workspaceId, dataflowId);
+
         List<Workspace> workspaces;
         if (workspaceId != null && !workspaceId.trim().isEmpty()) {
             Workspace single = oldClient.getWorkspace(workspaceId.trim());
             workspaces = single != null ? Collections.singletonList(single) : Collections.emptyList();
             if (workspaces.isEmpty()) {
-                log.warn("[migrateAll] Workspace not found for id={}, falling back to list and filter", workspaceId);
+                log.warn("[migrateAllForCurrentOrg] Workspace not found for id={}, falling back to list and filter", workspaceId);
                 workspaces = oldClient.getWorkspaces()
                         .stream()
                         .filter(Workspace::isEnabled)
@@ -131,25 +176,32 @@ public class NifiMigrationService {
                     .filter(Workspace::isEnabled)
                     .collect(Collectors.toList());
         }
-        log.info("[migrateAll] Found {} workspace(s) to migrate", workspaces.size());
+        log.info("[migrateAllForCurrentOrg] Found {} workspace(s) to migrate for orgId={}", workspaces.size(), currentOrgId);
         for (Workspace ws : workspaces) {
             if (!ws.isEnabled()) {
-                log.warn("[migrateAll] Skipping disabled workspace: {} (id={})", ws.getName(), ws.getId());
+                log.warn("[migrateAllForCurrentOrg] Skipping disabled workspace: {} (id={})", ws.getName(), ws.getId());
                 continue;
             }
             try {
-                log.info("[migrateAll] Migrating workspace: {} (id={})", ws.getName(), ws.getId());
+                log.info("[migrateAllForCurrentOrg] Migrating workspace: {} (id={})", ws.getName(), ws.getId());
                 migrateWorkspace(ws, dataflowId);
             } catch (Throwable t) {
-                log.error("[migrateAll] Workspace {} (id={}) failed, continuing with next: {}",
+                log.error("[migrateAllForCurrentOrg] Workspace {} (id={}) failed, continuing with next: {}",
                         ws.getName(), ws.getId(), t.getMessage(), t);
                 resultLogger.logFailure(ws.getName(), "(workspace)", null,
                         "Workspace migration failed: " + (t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName()), t);
             }
         }
-        String path = resultLogger.getOutputPath();
-        log.info("[migrateAll] END - result log at {}", path);
-        return path;
+    }
+
+    private static String buildCookieWithOid(String originalCookie, String orgId) {
+        if (originalCookie == null || originalCookie.isEmpty()) {
+            return "OID=" + orgId;
+        }
+        if (originalCookie.matches(".*\\bOID=[^;]*.*")) {
+            return originalCookie.replaceAll("\\bOID=[^;]*", "OID=" + orgId);
+        }
+        return originalCookie + "; OID=" + orgId;
     }
 
     private static boolean matchesWorkspace(Workspace ws, String workspaceId) {
@@ -969,8 +1021,10 @@ public class NifiMigrationService {
         if (baseDir == null || baseDir.trim().isEmpty()) {
             baseDir = "./flow-cache";
         }
+        String orgId = properties.getConfigManagerOrgId();
+        String orgPart = (orgId != null && !orgId.trim().isEmpty()) ? orgId.trim() : "unknown-org";
         String workspacePart = workspace != null && workspace.getId() != null ? workspace.getId().toString() : "unknown-workspace";
-        return Paths.get(baseDir, "config-manager/incrm", "workspace -" + workspacePart + ".json");
+        return Paths.get(baseDir, "config-manager", orgPart, "workspace-" + workspacePart + ".json");
     }
 
     private static final class ConfigCache {
