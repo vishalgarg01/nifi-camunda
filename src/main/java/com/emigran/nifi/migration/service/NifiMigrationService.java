@@ -733,6 +733,52 @@ public class NifiMigrationService {
             }
             neo.setRelations(relations);
             out.add(neo);
+
+            // If old block is neo_transformer mapped to http_write and has "split response" true,
+            // insert a split_json block AFTER the http_write to split the HTTP response
+            if ("http_write".equals(e.newType) && e.oldBlock != null && e.oldBlock.getType() != null
+                    && e.oldBlock.getType().toLowerCase().startsWith("neo_transformer")) {
+                String splitVal = getFieldValueFromFields(e.oldBlock.getFields(),
+                        "splitResponse", "Split Response", "split response");
+                if ("true".equalsIgnoreCase(splitVal)) {
+                    String splitName = e.name + "-split";
+
+                    // Rewire: http_write -> split_json (instead of http_write -> next)
+                    neo.getRelations().clear();
+                    neo.getRelations().add(new BlockRelation(
+                            "rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10),
+                            "isSuccess()",
+                            Collections.emptyList(),
+                            splitName));
+
+                    NeoBlock splitBlock = new NeoBlock();
+                    splitBlock.setName(splitName);
+                    splitBlock.setType("split_json");
+                    splitBlock.setSource(false);
+                    splitBlock.setPosition(new BlockPosition(positionX, 0));
+                    positionX += 320;
+
+                    Map<String, Object> splitConfig = new LinkedHashMap<>(rulesMetasService.getConfigDefaultsForBlockType("split_json"));
+                    splitConfig.put("split response", "true");
+                    splitConfig.put("JsonPath Expression", "$.[*]");
+                    splitBlock.setConfig(splitConfig);
+                    splitBlock.setVariableConfigKeyMap(Collections.emptyMap());
+
+                    // split_json -> next block in chain
+                    List<BlockRelation> splitRelations = new ArrayList<>();
+                    if (relationTo != null) {
+                        splitRelations.add(new BlockRelation(
+                                "rel_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10),
+                                "isSuccess()",
+                                Collections.emptyList(),
+                                relationTo));
+                    }
+                    splitBlock.setRelations(splitRelations);
+                    out.add(splitBlock);
+                    log.info("[buildNeoBlocks] Inserted split_json block '{}' after http_write '{}' (old neo_transformer had split response=true)",
+                            splitName, e.name);
+                }
+            }
         }
         return out;
     }
@@ -1174,6 +1220,15 @@ public class NifiMigrationService {
         return value;
     }
 
+    /**
+     * Replaces $[*] with $[0] in lineNos JSON path expressions.
+     * E.g. "$[*]['LINE_NO']" becomes "$[0]['LINE_NO']".
+     */
+    private static String normalizeLineNoJsonPath(String lineNo) {
+        if (lineNo == null) return null;
+        return lineNo.replace("$[*]", "$[0]");
+    }
+
     private Number parseNumber(String value) {
         if (value == null) return 0;
         try {
@@ -1198,7 +1253,7 @@ public class NifiMigrationService {
             if (ctx.getChildOrgId() != null) putByKey(config, "child_org_id", ctx.getChildOrgId());
             if (ctx.getRewardId() != null) putByKey(config, "rewardId", ctx.getRewardId());
             if (ctx.getBrandId() != null) putByKey(config, "brandId", ctx.getBrandId());
-            if(ctx.getLineNo() != null) putByKey(config, "lineNos", ctx.getLineNo());
+            if(ctx.getLineNo() != null) putByKey(config, "lineNos", normalizeLineNoJsonPath(ctx.getLineNo()));
         } else if ("jslt".equals(part) && ctx.getJsltScript() != null) {
             putByKey(config, "transformation", ctx.getJsltScript());
         } else if ("jolt".equals(part) && ctx.getJoltSpec() != null) {
