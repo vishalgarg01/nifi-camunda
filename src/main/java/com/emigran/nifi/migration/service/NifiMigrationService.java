@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "gnPWPnAtggJSShhPQRSkKff3X";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "B7mRMzi7LM5anjAEUDQoLRIwQsSjsvPViQhfHLxX";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "8rAShc0QLxEmx3aJqAQcSwnXs";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "e9VDNBP2BapGOEAdyGK6B8WEcD1m4xJCNqe6mVkN";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -466,7 +466,7 @@ public class NifiMigrationService {
 
             try {
                 log.info("[migrateDataflow] Stopping old dataflow on source system: workspaceId={}, dataflowUuid={}", sourceWorkspace.getId(), summary.getUuid());
-//                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
+                oldClient.stopDataflow(sourceWorkspace.getId(), summary.getUuid());
             } catch (Exception stopEx) {
                 log.warn("[migrateDataflow] Failed to stop old dataflow (non-fatal): {}", stopEx.getMessage());
             }
@@ -889,6 +889,9 @@ public class NifiMigrationService {
         Map<String, ConfigResourceRequest> requestsByName = new LinkedHashMap<>();
         Set<String> reusableKeys = new HashSet<>();
         List<PendingConfigReference> pending = new ArrayList<>();
+        // Track properties seen in the current run so that the second occurrence of a global key
+        // (e.g. "username") with a different value gets a dataflow-specific key instead of the org-level key.
+        Set<String> propertiesSeenInRun = new HashSet<>();
 
         for (NeoBlock neo : neoBlocks) {
             String blockDataflowKey = dataflowKey + "_" + neo.getType();
@@ -916,6 +919,7 @@ public class NifiMigrationService {
                     String keyPart = rawValue.substring(0, rawValue.indexOf("___"));
                     ensureVariableKeyMapEntry(neo, propName, keyPart);
                     cache.record(propName, rawValue.substring(rawValue.indexOf("___") + 3), keyPart, oldDataflowUuid);
+                    propertiesSeenInRun.add(propName);
                     continue;
                 }
 
@@ -925,14 +929,16 @@ public class NifiMigrationService {
                     reusableKeys.add(existingKey);
                     pending.add(new PendingConfigReference(neo, propName, existingKey, rawValue, isSecret));
                     cache.record(propName, rawValue, existingKey, oldDataflowUuid);
+                    propertiesSeenInRun.add(propName);
                     continue;
                 }
 
-                boolean propertySeen = cache.hasProperty(propName);
+                boolean propertySeen = cache.hasProperty(propName) || propertiesSeenInRun.contains(propName);
                 String base = chooseConfigKeyBase(propName, blockDataflowKey, propertySeen);
                 String configKey = buildConfigManagerKey(base, propName);
                 requestsByName.putIfAbsent(configKey, new ConfigResourceRequest(configKey, rawValue, null, isSecret));
                 pending.add(new PendingConfigReference(neo, propName, configKey, rawValue, isSecret));
+                propertiesSeenInRun.add(propName);
             }
         }
 
@@ -1079,7 +1085,7 @@ public class NifiMigrationService {
         String orgId = properties.getConfigManagerOrgId();
         String orgPart = (orgId != null && !orgId.trim().isEmpty()) ? orgId.trim() : "unknown-org";
         String workspacePart = workspace != null && workspace.getId() != null ? workspace.getId().toString() : "unknown-workspace";
-        return Paths.get(baseDir, "config-manager", orgPart, "workspace-" + workspacePart + ".json");
+        return Paths.get(baseDir, "config-manager", orgPart, orgPart + "_" + workspacePart + ".json");
     }
 
     private static final class ConfigCache {
