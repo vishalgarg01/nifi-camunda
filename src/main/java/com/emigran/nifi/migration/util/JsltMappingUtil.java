@@ -242,10 +242,46 @@ public final class JsltMappingUtil {
     }
 
     private static String buildFormatTimeParseTime(String expr, String existingDateFormat, String newDateFormat, String timezoneId) {
-        String parseCall = "parse-time(" + expr + ", " + quoteJsltString(existingDateFormat)
+        // If the format expects a time component (contains HH), add a fallback that appends
+        // a default time when the input value lacks one (detected by absence of ':')
+        String effectiveExpr = expr;
+        if (existingDateFormat != null && existingDateFormat.contains("HH")) {
+            String defaultTimeSuffix = buildDefaultTimeSuffix(existingDateFormat);
+            if (defaultTimeSuffix != null) {
+                effectiveExpr = "if (contains(" + expr + ", \":\")) " + expr
+                        + " else " + expr + " + " + quoteJsltString(defaultTimeSuffix);
+            }
+        }
+        String parseCall = "parse-time(" + effectiveExpr + ", " + quoteJsltString(existingDateFormat)
                 + (timezoneId != null && !timezoneId.isEmpty() ? ", " + quoteJsltString(timezoneId) : "") + ")";
         return "format-time(" + parseCall + ", " + quoteJsltString(newDateFormat)
                 + (timezoneId != null && !timezoneId.isEmpty() ? ", " + quoteJsltString(timezoneId) : "") + ")";
+    }
+
+    /**
+     * Builds the default time suffix to append when input is date-only.
+     * E.g., for format "dd-MM-yyyy HH:mm:ss" returns " 00:00:00",
+     *        for format "dd-MM-yyyy'T'HH:mm:ss" returns "T00:00:00".
+     */
+    private static String buildDefaultTimeSuffix(String dateFormat) {
+        int hhIndex = dateFormat.indexOf("HH");
+        if (hhIndex <= 0) return null;
+        int sepStart = hhIndex - 1;
+        // If the char before HH is a closing quote, find the opening quote to include the literal
+        if (dateFormat.charAt(sepStart) == '\'') {
+            int openQuote = dateFormat.lastIndexOf('\'', sepStart - 1);
+            if (openQuote >= 0) {
+                sepStart = openQuote;
+            }
+        }
+        String separatorAndTimeFmt = dateFormat.substring(sepStart);
+        // Strip single quotes used for literal characters in date format patterns
+        separatorAndTimeFmt = separatorAndTimeFmt.replace("'", "");
+        return separatorAndTimeFmt
+                .replace("HH", "00")
+                .replace("mm", "00")
+                .replace("ss", "00")
+                .replace("SSS", "000");
     }
 
     private static String parseExpToJslt(String inner) {

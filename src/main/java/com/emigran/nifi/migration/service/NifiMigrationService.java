@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "8rAShc0QLxEmx3aJqAQcSwnXs";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "e9VDNBP2BapGOEAdyGK6B8WEcD1m4xJCNqe6mVkN";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "9N2Tbtu3soS9x10ermZvcZYuA";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "7nYc7psUlhs5ZmahKJNxgYS86GtRpEDcCNw1mLNi";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -295,7 +295,7 @@ public class NifiMigrationService {
             boolean isTransform = isTransformFlow(detail);
             if (isTransform) {
                 Block transformBlock = detail.getBlocks().stream()
-                        .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")) || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue"))
+                        .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")) || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") || b.getType().startsWith("barocde_generate") )
                         .findFirst()
                         .orElse(null);
                 String blockNamePrefix = transformBlock != null ? transformBlock.getName() : null;
@@ -567,7 +567,7 @@ public class NifiMigrationService {
             return false;
         }
         return detail.getBlocks().stream()
-                .anyMatch(b -> b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue")));
+                .anyMatch(b -> b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") || b.getType().startsWith("barocde_generate")));
     }
 
     /** Old block types that map to sftp_read (first block may get Initial Listing Timestamp from API). */
@@ -606,7 +606,7 @@ public class NifiMigrationService {
         List<BlockOrderEntry> ordered = new ArrayList<>();
 
         Block transformBlock = blocks.stream()
-                .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue")))
+                .filter(b -> b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") || b.getType().startsWith("barocde_generate")))
                 .findFirst()
                 .orElse(null);
         int transformOrder = transformBlock != null ? transformBlock.getOrder() : -1;
@@ -616,7 +616,7 @@ public class NifiMigrationService {
             if ("ok_file".equalsIgnoreCase(b.getType())) {
                 continue;
             }
-            if (b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") )) {
+            if (b.getType() != null && (b.getType().startsWith("transform_to_")  || b.getType().startsWith("transfrom_csv_to_rewards") || b.getType().startsWith("retro_template") || b.getType().equalsIgnoreCase("goodwill_points_issue") || b.getType().startsWith("barocde_generate") )) {
                 ordered.add(new BlockOrderEntry(baseName + "-csv", mapLegacyToNew("convert_csv_to_json"), transformOrder, b.isSource(), b, "csv"));
                 ordered.add(new BlockOrderEntry(baseName + "-jslt", "jslt_transform", transformOrder + 1, false, b, "jslt"));
                 ordered.add(new BlockOrderEntry(baseName + "-jolt", "jolt_transform", transformOrder + 2, false, b, "jolt"));

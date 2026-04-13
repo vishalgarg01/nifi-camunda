@@ -37,9 +37,9 @@ camunda.bpm:
 nifi:
   migration:
     old:
-      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://incrm.connectplus.capillarytech.com/api}
+      base-url: ${NIFI_MIGRATION_OLD_BASE_URL:https://sgcrm.connectplus.capillarytech.com/api}
     new:
-      base-url: ${NIFI_MIGRATION_NEW_BASE_URL:https://incrm.connectplus.capillarytech.com/api}
+      base-url: ${NIFI_MIGRATION_NEW_BASE_URL:https://sgcrm.connectplus.capillarytech.com/api}
     auth:
       # Set this to the raw Base64 token only (no "Basic " prefix)
       basic: ${NIFI_MIGRATION_AUTH_BASIC:YXV0b21hdGlvbl91c2VyOks1MjFyITMzYQ==}
@@ -54,17 +54,17 @@ nifi:
       sensitive-key: ${NIFI_MIGRATION_FLOW_XML_SENSITIVE_KEY:}
     log-dir: ${NIFI_MIGRATION_LOG_DIR:./nifi-migration-logs}
     glue:
-      block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://incrm.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
+      block-definition-url: ${NIFI_MIGRATION_GLUE_BLOCK_DEFINITION_URL:https://sgcrm.connectplus.capillarytech.com/api/blocks/{blockTypeId}/definition}
     neo-rule:
-      base-url: ${NIFI_MIGRATION_NEO_RULE_BASE_URL:https://apac.intouch.capillarytech.com/extensions/neo/api/v1/xto6x}
+      base-url: ${NIFI_MIGRATION_NEO_RULE_BASE_URL:https://apac2.intouch.capillarytech.com/extensions/neo/api/v1/xto6x}
       application-id: ${NIFI_MIGRATION_NEO_APPLICATION_ID:174ea672-f42a-4dad-9335-7498c522bc7f}
       context: ${NIFI_MIGRATION_NEO_CONTEXT:connectplus}
-      cookie: ${NIFI_MIGRATION_NEO_COOKIE:_ga=GA1.4.1183059349.1736404268; csrftoken=9REUcIoYaM6Xvls0pWhZCcMPH9TD7LRe; CS=e3829dc17e402fbc5b48216d1a6c42a3; CC=S-FPmWuzr5X5SCPAGOVjoCk8sycZePBbHsv_ty9UflUaop5x_9h-rZFQR9B8bdPY; CCEXP=1775711807; federated_id_token=eyJraWQiOiIxTXBGZjJsQ1ZJc19wbmtNQVhKZk9iRDR0aUpGTmZfaHZsY2xIb1RqclNBIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIwMHVnczVydHAweWJQckNzOTR4NyIsIm5hbWUiOiJWaXNoYWwgR2FyZyIsInZlciI6MSwiaXNzIjoiaHR0cHM6Ly9jYXBpbGxhcnkub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQiLCJhdWQiOiIwb2ExODI3YnU0endHc0xpazR4NyIsImlhdCI6MTc3NTYyNTQwNywiZXhwIjoxNzc1NjI5MDA3LCJqdGkiOiJJRC52N1FVR0h0dnBFYWZ0Q1F6SXRaRVdLZ2FCdGRITW1UQ09ydzVfcTRYRzVZIiwiYW1yIjpbInB3ZCJdLCJpZHAiOiIwb2FxODJ6MTE5dG1SYnpONjR4NyIsInByZWZlcnJlZF91c2VybmFtZSI6InZpc2hhbC5nYXJnQGNhcGlsbGFyeXRlY2guY29tIiwiYXV0aF90aW1lIjoxNzc1NjI1NDA2LCJhdF9oYXNoIjoid2h4TFFGV2lPUVBST1o5bEZNT3FaUSJ9.c_8x5C2DvtS1hSi_ZTvfgmUrcDgrB0I90cg3IWwM-Q5VpFtIl-akjSL8VfmKdL9v9qMuVzOikkXM-pVvrAQXOxW-eQ85Km5dz8IadNmd2b36JH84B_uKWiDtc_76HGAvvIEf_rBUOFEmz8d93Fi5xGiw0C-1Y28T36-UlqaKUSQ5_6cl4Puk12s1W1dqq6M2_iu1vuT5V0OsXtaxg9nS_M8tktusBbXACgVbG_7eg3BezzsfSOxNKtvmRo8XnGJxjP5h3UZ-skJ8rXrqGiuzO97Cncw4stnt0J6IvrE1-sT2zYPTis-014A5iArbmmgE1b3I_Ldy83W9Nmp44IdTBg; CT=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyI2NzI1ODAiXSwib3JnSUQiOjAsImV4cCI6MTc3NTcxMTgwOCwiaWF0IjoxNzc1NjI1NDA4LCJpc3MiOiJjYXBpbGxhcnl0ZWNoLmNvbSIsImF1ZCI6ImNhcGlsbGFyeSxpbnRvdWNoLGFyeWEscmVvbixhcHBzIiwic291cmNlIjoiV0VCQVBQIiwicmVmZXJlbmNlSUQiOiIxMzczMzY2NSJ9.8IFudKb8YzpCwddLGUFlrYYA5PCV4gkWwFz8x7zJcUo; userPreferenceSelected=13733665_PLID; OID=2159}
+      cookie: ${NIFI_MIGRATION_NEO_COOKIE:csrftoken=F7GdWOFfO6twrhvQ3Rwdsy3Rr9PW6SbY; FROM_LAST_OID=150030; CS=e01b7623b57ae5b262a0cc09a4382092; CC=uwVmTAMEMMzRkt6ExMP7nBlssY6w8ANdTlYr1qHmG4KSyS9dvgOfQHLZy0FmAwcc; CCEXP=1775908569; federated_id_token=eyJraWQiOiIxTXBGZjJsQ1ZJc19wbmtNQVhKZk9iRDR0aUpGTmZfaHZsY2xIb1RqclNBIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIwMHVnczVydHAweWJQckNzOTR4NyIsIm5hbWUiOiJWaXNoYWwgR2FyZyIsInZlciI6MSwiaXNzIjoiaHR0cHM6Ly9jYXBpbGxhcnkub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQiLCJhdWQiOiIwb2ExODI3YnU0endHc0xpazR4NyIsImlhdCI6MTc3NTgyMjE2OSwiZXhwIjoxNzc1ODI1NzY5LCJqdGkiOiJJRC5SOHBMY3NsQWJ3QkctRDNsUEduQTcwMHVJMTNZVXZRazM2X0ltdGFEVXVBIiwiYW1yIjpbInB3ZCJdLCJpZHAiOiIwb2FxODJ6MTE5dG1SYnpONjR4NyIsInByZWZlcnJlZF91c2VybmFtZSI6InZpc2hhbC5nYXJnQGNhcGlsbGFyeXRlY2guY29tIiwiYXV0aF90aW1lIjoxNzc1ODIyMTY4LCJhdF9oYXNoIjoiaGd6VUVhNjBZTjUyWHZaWWQ4UGYyZyJ9.dsFAgLqRf6CgmB2ZgyrzyDZq5YGRmTuup-Bwr2YCS0Bf2rHvaRNBGpSaylyPlJxZUI4KZlGAu6ntNI9I-5VSaGo_WDfjVxKlKIVeXzGsw_sPICtGwmL1kGzE1M1GzlwaaND_SC35L9oOcO1ar6S6R3x5BxT90t5gN1lveZd-A6f_HDyi6d3dPlIWBiMYilZvPqkHNTEMxkYMuj_0U49i8__euf7-89HBqVgJJK_Y9c4KyFU5yew5648MZVT1rUh3l52-xrIfLj5nogJ8hbjzJBOKVQ-qgPiI5TWWg7A2m6WRzarlTbG6Iv3T3PuM634mbLL8P9iLFMk6lxh1hKT20g; CT=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyIxMjcxNTgzIl0sIm9yZ0lEIjowLCJleHAiOjE3NzU5MDg1NzAsImlhdCI6MTc3NTgyMjE3MCwiaXNzIjoiY2FwaWxsYXJ5dGVjaC5jb20iLCJhdWQiOiJjYXBpbGxhcnksaW50b3VjaCxhcnlhLHJlb24sYXBwcyIsInNvdXJjZSI6IldFQkFQUCIsInJlZmVyZW5jZUlEIjoiMzAwMTE3OTA1In0.JAn66tvZ2TORUbIPVCVpwy49vmpVEDmG1WbnE0oH4IY; userPreferenceSelected=300117905_RCID; OID=200139}
       remote-user: ${NIFI_MIGRATION_NEO_REMOTE_USER:50771384}
     config-manager:
-      base-url: ${NIFI_MIGRATION_CONFIG_MANAGER_BASE_URL:https://apac.intouch.capillarytech.com/extensions/neo/api/v1/}
-      org-id: ${NIFI_MIGRATION_CONFIG_MANAGER_ORG_ID:2159}
-      bearer-token: ${NIFI_MIGRATION_CONFIG_MANAGER_BEARER_TOKEN:eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyI2NzI1ODAiXSwib3JnSUQiOjAsImV4cCI6MTc3NTcxMTgwOCwiaWF0IjoxNzc1NjI1NDA4LCJpc3MiOiJjYXBpbGxhcnl0ZWNoLmNvbSIsImF1ZCI6ImNhcGlsbGFyeSxpbnRvdWNoLGFyeWEscmVvbixhcHBzIiwic291cmNlIjoiV0VCQVBQIiwicmVmZXJlbmNlSUQiOiIxMzczMzY2NSJ9.8IFudKb8YzpCwddLGUFlrYYA5PCV4gkWwFz8x7zJcUo}
+      base-url: ${NIFI_MIGRATION_CONFIG_MANAGER_BASE_URL:https://apac2.intouch.capillarytech.com/extensions/neo/api/v1/}
+      org-id: ${NIFI_MIGRATION_CONFIG_MANAGER_ORG_ID:200086}
+      bearer-token: ${NIFI_MIGRATION_CONFIG_MANAGER_BEARER_TOKEN:eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6WyIxMjcxNTgzIl0sIm9yZ0lEIjowLCJleHAiOjE3NzU5MDg1NzAsImlhdCI6MTc3NTgyMjE3MCwiaXNzIjoiY2FwaWxsYXJ5dGVjaC5jb20iLCJhdWQiOiJjYXBpbGxhcnksaW50b3VjaCxhcnlhLHJlb24sYXBwcyIsInNvdXJjZSI6IldFQkFQUCIsInJlZmVyZW5jZUlEIjoiMzAwMTE3OTA1In0.JAn66tvZ2TORUbIPVCVpwy49vmpVEDmG1WbnE0oH4IY}
     string:
       encryptor:
         algorithm: ${NIFI_MIGRATION_STRING_ENCRYPTOR_ALGORITHM:PBEWITHMD5AND256BITAES-CBC-OPENSSL}
