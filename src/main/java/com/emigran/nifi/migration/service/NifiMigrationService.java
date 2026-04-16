@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "9N2Tbtu3soS9x10ermZvcZYuA";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "7nYc7psUlhs5ZmahKJNxgYS86GtRpEDcCNw1mLNi";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "r9JrCygr8sWijWfmaG9zIlyHk";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "Mz6sJLjL0Pywgm5FSqvz3UBziC10cewpnnniWq5B";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -709,6 +709,17 @@ public class NifiMigrationService {
                     config.put("kafkaConnectionService", kafkaConnectionId);
                 }
             }
+            // For convert_csv_to_json: if groupBy=email and groupSize=1, override sortHeaders and groupBy to LINE_NO
+//            if ("convert_csv_to_json".equals(e.newType)) {
+//                Object groupByVal = config.get("groupBy");
+//                Object groupSizeVal = config.get("groupSize");
+//                if (groupByVal != null && "email".equalsIgnoreCase(groupByVal.toString().trim())
+//                        && groupSizeVal != null && "1".equals(groupSizeVal.toString().trim())) {
+//                    config.put("sortHeaders", "LINE_NO");
+//                    config.put("groupBy", "LINE_NO");
+//                    log.info("[buildNeoBlocks] convert_csv_to_json block '{}': groupBy was 'email' with groupSize=1, overriding sortHeaders and groupBy to LINE_NO", e.name);
+//                }
+//            }
             neo.setConfig(config);
 
             Map<String, String> varMap = buildVariableConfigKeyMap(config, e.oldBlock.getFields());
@@ -807,23 +818,26 @@ public class NifiMigrationService {
         for (NeoBlock neo : neoBlocks) {
             if (neo.getConfig() == null) continue;
             String type = neo.getType();
-            if ("http_write".equals(type)) {
+            if("convert_csv_to_json".equalsIgnoreCase(type)){
                 neo.getConfig().put("clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
-                neo.getConfig().put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
-
             }
-            else if ("sftp_read".equals(type)) {
-                neo.getConfig().put("username", "capillary");
-                neo.getConfig().put("password", "captech123");
-                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest4/source");
-                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest4/process");
-                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest4/error");
-            }
-            else if ("sftp_write".equals(type)) {
-                neo.getConfig().put("username", "capillary");
-                neo.getConfig().put("password", "captech123");
-                neo.getConfig().put("remotePath", "/Capillary testing/vtest4/error");
-            }
+//            if ("http_write".equals(type)) {
+//                neo.getConfig().put("clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
+//                neo.getConfig().put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
+//
+//            }
+//            else if ("sftp_read".equals(type)) {
+//                neo.getConfig().put("username", "capillary");
+//                neo.getConfig().put("password", "captech123");
+//                neo.getConfig().put("sourceDirectory", "/Capillary testing/vtest4/source");
+//                neo.getConfig().put("processedDirectory", "/Capillary testing/vtest4/process");
+//                neo.getConfig().put("apiErrorFilePath", "/Capillary testing/vtest4/error");
+//            }
+//            else if ("sftp_write".equals(type)) {
+//                neo.getConfig().put("username", "capillary");
+//                neo.getConfig().put("password", "captech123");
+//                neo.getConfig().put("remotePath", "/Capillary testing/vtest4/error");
+//            }
         }
     }
 
@@ -1235,6 +1249,34 @@ public class NifiMigrationService {
         return lineNo.replace("$[*]", "$[0]");
     }
 
+    /**
+     * Converts a lineNo JSON path to single-object form ($.FIELD) for use when split response is true
+     * (data is a single object, not an array). E.g. "$[*].LINE_NO" or "$[0].LINE_NO" → "$.LINE_NO".
+     */
+    private static String toSingleObjectJsonPath(String jsonPath) {
+        if (jsonPath == null) return null;
+        String trimmed = jsonPath.trim();
+        // Strip array index: $[*].FIELD or $[0].FIELD → $.FIELD
+        trimmed = trimmed.replaceAll("^\\$\\[[^]]*\\]", "\\$");
+        return trimmed;
+    }
+
+    /**
+     * Converts a JSON path like $['field'] to $[0]['field'] for use when split response is false
+     * (the data is an array, so we need to index into the first element).
+     */
+    private static String toArrayIndexedJsonPath(String jsonPath) {
+        if (jsonPath == null) return null;
+        String trimmed = jsonPath.trim();
+        if (trimmed.startsWith("$[") && !trimmed.startsWith("$[0]")) {
+            return "$[0]" + trimmed.substring(1);
+        }
+        if (trimmed.startsWith("$.")) {
+            return "$[0]." + trimmed.substring(2);
+        }
+        return trimmed;
+    }
+
     private Number parseNumber(String value) {
         if (value == null) return 0;
         try {
@@ -1252,14 +1294,17 @@ public class NifiMigrationService {
             if (!isEmptyOrEmptyJson(ctx.getSortHeaders())) putByKey(config, "sortHeaders", ctx.getSortHeaders());
             if (ctx.getAlphabeticalSort() != null) putByKey(config, "alphabeticalSort", "true".equalsIgnoreCase(ctx.getAlphabeticalSort()));
             if (ctx.getSplitResponse()) config.put("split response", "true");
-            if (ctx.getAttributionType() != null) putByKey(config, "attribution_type", ctx.getAttributionType());
-            if (ctx.getAttributionCode() != null) putByKey(config, "attribution_code", ctx.getAttributionCode());
+            if (ctx.getAttributionType() != null) putByKey(config, "attribution_type",
+                    ctx.getSplitResponse() ? ctx.getAttributionType() : toArrayIndexedJsonPath(ctx.getAttributionType()));
+            if (ctx.getAttributionCode() != null) putByKey(config, "attribution_code",
+                    ctx.getSplitResponse() ? ctx.getAttributionCode() : toArrayIndexedJsonPath(ctx.getAttributionCode()));
             if (ctx.getHeaderValue() != null) putByKey(config, "header_value", ctx.getHeaderValue());
             if (ctx.getChildTillCode() != null) putByKey(config, "child_till_code", ctx.getChildTillCode());
             if (ctx.getChildOrgId() != null) putByKey(config, "child_org_id", ctx.getChildOrgId());
             if (ctx.getRewardId() != null) putByKey(config, "rewardId", ctx.getRewardId());
             if (ctx.getBrandId() != null) putByKey(config, "brandId", ctx.getBrandId());
-            if(ctx.getLineNo() != null) putByKey(config, "lineNos", normalizeLineNoJsonPath(ctx.getLineNo()));
+            if(ctx.getLineNo() != null) putByKey(config, "lineNos",
+                    ctx.getSplitResponse() ? toSingleObjectJsonPath(ctx.getLineNo()) : normalizeLineNoJsonPath(ctx.getLineNo()));
         } else if ("jslt".equals(part) && ctx.getJsltScript() != null) {
             putByKey(config, "transformation", ctx.getJsltScript());
         } else if ("jolt".equals(part) && ctx.getJoltSpec() != null) {
