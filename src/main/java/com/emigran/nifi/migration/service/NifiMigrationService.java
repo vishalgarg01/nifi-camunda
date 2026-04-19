@@ -657,7 +657,7 @@ public class NifiMigrationService {
         }
 
         List<NeoBlock> out = new ArrayList<>();
-        int positionX = 0;
+        int positionX = 320;
         for (int i = 0; i < ordered.size(); i++) {
             BlockOrderEntry e = ordered.get(i);
             NeoBlock neo = new NeoBlock();
