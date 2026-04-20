@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +25,7 @@ public final class JsltMappingUtil {
     private static final Pattern CONCAT_PREFIX_PATTERN = Pattern.compile("^\\s*'([^']+)'\\s*\\.concat\\s*\\(");
     private static final Pattern BASE64_PATTERN = Pattern.compile("^base64\\{([^}]+)\\}$");
     private static final Pattern BASE64_HDR_IN_EXP_PATTERN = Pattern.compile("base64\\{hdr\\{([^}]+)\\}\\}");
+    private static final Pattern SUM_HDR_PATTERN = Pattern.compile("^sum\\{hdr\\{([^}]+)\\}\\}$");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -195,7 +198,57 @@ public final class JsltMappingUtil {
         // When input is an array (e.g. [{ "First Name": "...", "Last Name": "..." }]), apply transform to each element.
         // When input is a single object, apply transform as-is.
         // NiFi JSLT does not support type(); use is-array(.) per JSLT built-in functions.
-        return "if (is-array(.)) [ for (.) " + innerTransform + " ] else " + innerTransform;
+        String body = "if (is-array(.)) [ for (.) " + innerTransform + " ] else " + innerTransform;
+        String sumPrefix = buildSumLetBindings(mapping);
+        return sumPrefix + body;
+    }
+
+    /**
+     * Scans the header mapping for values of the form {@code sum{hdr{FIELD}}} and
+     * emits JSLT {@code let} bindings so every row can reference the aggregate.
+     *
+     * <p>For each distinct field it produces two bindings:
+     * <pre>
+     * let sum_FIELD_raw = if (is-array(.)) sum([for (.) number(.FIELD)]) else number(.FIELD)
+     * let sum_FIELD     = string(round($sum_FIELD_raw * 100) / 100)
+     * </pre>
+     * The {@code round(x * 100) / 100} step guards against floating-point drift so
+     * the output matches the old AggregatorProcessor (e.g. {@code "220.19"}).
+     */
+    private static String buildSumLetBindings(Map<String, String> mapping) {
+        Set<String> sumFields = new LinkedHashSet<>();
+        for (String raw : mapping.values()) {
+            if (raw == null) continue;
+            String v = raw.trim();
+            if (v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) {
+                v = v.substring(1, v.length() - 1).trim();
+            }
+            Matcher m = SUM_HDR_PATTERN.matcher(v);
+            if (m.matches()) {
+                sumFields.add(m.group(1).trim());
+            }
+        }
+        if (sumFields.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String field : sumFields) {
+            String selector = toJsltSelector(field);
+            String varRaw = sumVarName(field) + "_raw";
+            String varOut = sumVarName(field);
+            sb.append("let ").append(varRaw)
+                    .append(" = if (is-array(.)) sum([for (.) number(").append(selector).append(")]) else number(").append(selector).append(")\n");
+            sb.append("let ").append(varOut)
+                    .append(" = string(round($").append(varRaw).append(" * 100) / 100)\n");
+        }
+        return sb.toString();
+    }
+
+    private static String sumVarName(String field) {
+        StringBuilder out = new StringBuilder("sum_");
+        for (int i = 0; i < field.length(); i++) {
+            char c = field.charAt(i);
+            out.append(Character.isLetterOrDigit(c) || c == '_' ? c : '_');
+        }
+        return out.toString();
     }
 
     static String parseValueToJslt(String value, String outputKey,
@@ -221,6 +274,11 @@ public final class JsltMappingUtil {
         if (base64Matcher.matches()) {
             String fieldName = base64Matcher.group(1).trim();
             return quoteJsltString("${" + fieldName + ":base64Encode()}");
+        }
+
+        Matcher sumMatcher = SUM_HDR_PATTERN.matcher(v);
+        if (sumMatcher.matches()) {
+            return "$" + sumVarName(sumMatcher.group(1).trim());
         }
 
         if (v.startsWith("exp{")) {
