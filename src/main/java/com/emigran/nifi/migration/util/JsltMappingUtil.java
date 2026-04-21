@@ -26,6 +26,8 @@ public final class JsltMappingUtil {
     private static final Pattern BASE64_PATTERN = Pattern.compile("^base64\\{([^}]+)\\}$");
     private static final Pattern BASE64_HDR_IN_EXP_PATTERN = Pattern.compile("base64\\{hdr\\{([^}]+)\\}\\}");
     private static final Pattern SUM_HDR_PATTERN = Pattern.compile("^sum\\{hdr\\{([^}]+)\\}\\}$");
+    private static final Pattern MULTIPLY_WITH_ELVIS_PATTERN = Pattern.compile(
+            "^\\s*hdr\\{([^}]+)\\}\\s*\\*\\s*\\(\\s*hdr\\{([^}]+)\\}\\s*\\?:\\s*(.+?)\\s*\\)\\s*$");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -48,7 +50,7 @@ public final class JsltMappingUtil {
                 headerMappingJson,
                 new TypeReference<LinkedHashMap<String, String>>() { }
         );
-        List<String> sourceNames = new ArrayList<>();
+        LinkedHashSet<String> sourceNames = new LinkedHashSet<>();
         for (String name : recordGroupByCommaSeparated.split("\\s*,\\s*")) {
             String trimmed = name.trim();
             if (trimmed.isEmpty()) continue;
@@ -59,6 +61,13 @@ public final class JsltMappingUtil {
             }
             if (isSimpleFieldName(value)) {
                 sourceNames.add(value);
+            } else {
+                // For exp{}/sum{}/base64{}, expand to the underlying hdr{FIELD} source columns.
+                // String literals in concat chains are ignored; const{} contributes nothing.
+                Matcher m = HDR_IN_EXP_PATTERN.matcher(value);
+                while (m.find()) {
+                    sourceNames.add(m.group(1).trim());
+                }
             }
         }
         return String.join(",", sourceNames);
@@ -356,6 +365,23 @@ public final class JsltMappingUtil {
             return quoteJsltString(nifiEl);
         }
 
+        // Handle hdr{A} * (hdr{B}?:"default") — numeric multiply with Elvis-style fallback
+        Matcher mulMatcher = MULTIPLY_WITH_ELVIS_PATTERN.matcher(inner);
+        if (mulMatcher.matches()) {
+            String chain = buildMultiplyWithElvis(mulMatcher.group(1).trim(),
+                    mulMatcher.group(2).trim(),
+                    mulMatcher.group(3).trim());
+            if (chain != null) return chain;
+        }
+
+        // Multi-hop concat chain: TOKEN.concat(TOKEN).concat(TOKEN)... where each TOKEN is
+        // 'literal', 'hdr{FIELD}' (quoted), or hdr{FIELD}. Must run before CONCAT_PREFIX_PATTERN,
+        // which only captures the first '...'.concat( and silently drops the rest of the chain.
+        if (inner.contains(".concat(")) {
+            String chain = parseConcatChain(inner);
+            if (chain != null) return chain;
+        }
+
         Matcher hdrMatcher = HDR_IN_EXP_PATTERN.matcher(inner);
         if (!hdrMatcher.find()) {
             return null;
@@ -392,6 +418,98 @@ public final class JsltMappingUtil {
         }
         String combined = String.join("", literals);
         return fieldSelector + " + " + quoteJsltString(combined);
+    }
+
+    /**
+     * Parses a chain like {@code 'hdr{A}'.concat('hdr{B}').concat(' literal ').concat(hdr{C})} into a
+     * JSLT string concatenation (joined with {@code +}). Returns null if the input does not match
+     * the expected shape, letting the caller fall back to existing parsing.
+     */
+    private static String parseConcatChain(String inner) {
+        List<String> parts = new ArrayList<>();
+        int[] cursor = new int[] { 0 };
+        String tok = readConcatToken(inner, cursor);
+        if (tok == null) return null;
+        parts.add(tok);
+        while (cursor[0] < inner.length()) {
+            skipWhitespace(inner, cursor);
+            if (cursor[0] >= inner.length()) break;
+            if (!startsWithAt(inner, cursor[0], ".concat(")) return null;
+            cursor[0] += ".concat(".length();
+            tok = readConcatToken(inner, cursor);
+            if (tok == null) return null;
+            parts.add(tok);
+            skipWhitespace(inner, cursor);
+            if (cursor[0] >= inner.length() || inner.charAt(cursor[0]) != ')') return null;
+            cursor[0]++;
+        }
+        if (parts.size() < 2) return null;
+        return String.join(" + ", parts);
+    }
+
+    /**
+     * Reads one concat argument starting at {@code cursor[0]}: either {@code 'quoted literal'}
+     * (where the literal may itself be {@code hdr{FIELD}}) or a bare {@code hdr{FIELD}}.
+     * Advances {@code cursor[0]} past the token and returns the JSLT expression, or null on failure.
+     */
+    private static String readConcatToken(String s, int[] cursor) {
+        skipWhitespace(s, cursor);
+        int i = cursor[0];
+        if (i >= s.length()) return null;
+        char c = s.charAt(i);
+        if (c == '\'') {
+            int end = s.indexOf('\'', i + 1);
+            if (end < 0) return null;
+            String literal = s.substring(i + 1, end);
+            cursor[0] = end + 1;
+            Matcher m = HDR_IN_EXP_PATTERN.matcher(literal);
+            if (m.matches()) {
+                return toJsltSelector(m.group(1).trim());
+            }
+            return quoteJsltString(literal);
+        }
+        if (startsWithAt(s, i, "hdr{")) {
+            int brace = s.indexOf('}', i + 4);
+            if (brace < 0) return null;
+            String field = s.substring(i + 4, brace).trim();
+            cursor[0] = brace + 1;
+            return toJsltSelector(field);
+        }
+        return null;
+    }
+
+    private static void skipWhitespace(String s, int[] cursor) {
+        while (cursor[0] < s.length() && Character.isWhitespace(s.charAt(cursor[0]))) cursor[0]++;
+    }
+
+    private static boolean startsWithAt(String s, int i, String prefix) {
+        return i + prefix.length() <= s.length() && s.startsWith(prefix, i);
+    }
+
+    /**
+     * Builds JSLT for {@code hdr{A} * (hdr{B}?:"default")}: multiply, coercing to number, with a
+     * fallback when field B is missing/empty. The fallback is emitted as a numeric literal when
+     * parseable, else as {@code number("...")}.
+     */
+    private static String buildMultiplyWithElvis(String field1, String field2, String fallback) {
+        String fb = fallback == null ? "" : fallback.trim();
+        if (fb.length() >= 2) {
+            char first = fb.charAt(0);
+            char last = fb.charAt(fb.length() - 1);
+            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+                fb = fb.substring(1, fb.length() - 1);
+            }
+        }
+        String f1Sel = toJsltSelector(field1);
+        String f2Sel = toJsltSelector(field2);
+        String fallbackExpr;
+        try {
+            Double.parseDouble(fb);
+            fallbackExpr = fb;
+        } catch (NumberFormatException ex) {
+            fallbackExpr = "number(" + quoteJsltString(fb) + ")";
+        }
+        return "number(" + f1Sel + ") * (if (" + f2Sel + ") number(" + f2Sel + ") else " + fallbackExpr + ")";
     }
 
     private static String quoteJsltString(String s) {

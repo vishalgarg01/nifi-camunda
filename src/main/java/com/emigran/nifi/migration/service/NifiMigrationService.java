@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "r9JrCygr8sWijWfmaG9zIlyHk";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "Mz6sJLjL0Pywgm5FSqvz3UBziC10cewpnnniWq5B";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "BjXodKPYCbowa7cr02Od0ZwKT";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "YEzd1lE9qtNJiCcgio1KZys8D4ww9c6KtKK5j2My";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -505,7 +505,7 @@ public class NifiMigrationService {
                         oldBlock.getName(), info.getProcessorName());
                 continue;
             }
-            String processorTypeForApi = (info.getProcessorClass().contains("InvokeHttp") && oldBlock.getType().startsWith("neo_transformer") )
+            String processorTypeForApi = ( (info.getProcessorClass().contains("InvokeHTTP") || info.getProcessorClass().contains("InvokeHttp") ) && oldBlock.getType().startsWith("neo_transformer") )
                     ? "com.capillary.foundation.processors.OAuthClientProcessor"
                     : info.getProcessorClass();
             ProcessorConcurrencyRequest request = new ProcessorConcurrencyRequest();
@@ -581,6 +581,11 @@ public class NifiMigrationService {
     /** Kafka connection service IDs: chosen from old block's kafkaBrokers value (event vs connect). */
     private static final String KAFKA_CONNECTION_EVENT = "e82c0901-019a-1000-0000-000024383183";
     private static final String KAFKA_CONNECTION_CONNECT = "e4019edc-019a-1000-0000-0000394c142c";
+
+    private static final String KAFKA_CONNECTION_LOYALTY_NON_PROD = "aecb7ad9-019d-1000-0000-00007729012b";
+    private static final String KAFKA_CONNECTION_LOYALTY_PROD = "aed0763d-019d-1000-ffff-ffff8ece6244";
+    private static final String KAFKA_CONNECTION_STREAMING = "aeef353b-019d-1000-0000-00000d77a65b";
+
 
     /** Alternative field keys/names from old dataflow that map to RulesMetas config keys (e.g. "headerMapping" vs "headersMapping" / "Rename Headers Mapping"). */
     private static final Map<String, List<String>> CONFIG_KEY_FIELD_ALIASES = Collections.unmodifiableMap(
@@ -695,6 +700,28 @@ public class NifiMigrationService {
                     }
                     if (clientSecret == null || clientSecret.toString().trim().isEmpty()) {
                         config.put("clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
+                    }
+                }
+            }
+            // For s3_write: NiFi 1.11.4 accepted "bucket/sub/path" in the bucket field, but NiFi 2.5.0
+            // requires bucket name only. Split the first path segment out as the bucket and prepend the
+            // remainder to s3ObjectKey.
+            if ("s3_write".equals(e.newType)) {
+                Object bucketObj = config.get("s3BucketName");
+                if (bucketObj != null) {
+                    String bucketVal = bucketObj.toString().trim();
+                    int slashIdx = bucketVal.indexOf('/');
+                    if (slashIdx > 0 && !bucketVal.contains("___")) {
+                        String bucket = bucketVal.substring(0, slashIdx);
+                        String prefix = bucketVal.substring(slashIdx + 1).replaceAll("^/+", "").replaceAll("/+$", "");
+                        Object objectKeyObj = config.get("s3ObjectKey");
+                        String objectKey = objectKeyObj != null ? objectKeyObj.toString() : "${filename}";
+                        if (objectKey.startsWith("/")) objectKey = objectKey.substring(1);
+                        String newObjectKey = prefix.isEmpty() ? objectKey : prefix + "/" + objectKey;
+                        config.put("s3BucketName", bucket);
+                        config.put("s3ObjectKey", newObjectKey);
+                        log.info("[buildNeoBlocks] s3_write block '{}': split bucket '{}' -> s3BucketName='{}', s3ObjectKey='{}'",
+                                e.name, bucketVal, bucket, newObjectKey);
                     }
                 }
             }
@@ -908,7 +935,7 @@ public class NifiMigrationService {
         Set<String> propertiesSeenInRun = new HashSet<>();
 
         for (NeoBlock neo : neoBlocks) {
-            String blockDataflowKey = dataflowKey + "_" + neo.getType();
+            String blockDataflowKey = dataflowKey + "_" + neo.getType() ;
             Map<String, Object> config = neo.getConfig();
             if (config == null || config.isEmpty()) continue;
             Map<String, RuleMeta.PropertySchema> schemas = rulesMetasService.getPropertySchemasForBlockType(neo.getType());
@@ -1099,7 +1126,7 @@ public class NifiMigrationService {
         String orgId = properties.getConfigManagerOrgId();
         String orgPart = (orgId != null && !orgId.trim().isEmpty()) ? orgId.trim() : "unknown-org";
         String workspacePart = workspace != null && workspace.getId() != null ? workspace.getId().toString() : "unknown-workspace";
-        return Paths.get(baseDir, "config-manager", orgPart, orgPart + "_" + workspacePart + ".json");
+        return Paths.get(baseDir, "config-manager", "workspace-" + workspacePart + ".json");
     }
 
     private static final class ConfigCache {
@@ -1382,6 +1409,15 @@ public class NifiMigrationService {
         if (lower.contains("event")) {
             return KAFKA_CONNECTION_EVENT;
         }
+        if (lower.contains("loyalty-nonprod")) {
+            return KAFKA_CONNECTION_LOYALTY_NON_PROD;
+        }
+        if (lower.contains("loyalty-prod-kafka")) {
+            return KAFKA_CONNECTION_LOYALTY_PROD;
+        }
+        if (lower.contains("streaming-platform-nonprod")) {
+            return KAFKA_CONNECTION_STREAMING;
+        }
         return null;
     }
 
@@ -1501,7 +1537,7 @@ public class NifiMigrationService {
         mapping.put("neo_transformer", "http_write");
         mapping.put("kafka_connect_to_source", "kafka_topic_read");
         mapping.put("csv_json_neo_transformer", "convert_csv_to_json");
-        mapping.put("neo_transformer_iteration", "neo_block_loop");
+        mapping.put("neo_transformer_iteration", "http_write");
         mapping.put("hash_csv_fields", "hash_csv_columns");
         mapping.put("kafka_connect_to_source_tracing", "kafka_topic_read");
         mapping.put("csv_json_neo_transformer_v2", "convert_csv_to_json");
@@ -1516,6 +1552,8 @@ public class NifiMigrationService {
         mapping.put("retro_template", "retro_template");
         mapping.put("goodwill_points_issue", "goodwill_points_issue");
         mapping.put("Convert_CSV/Avro_file_to_Json", "json_to_csv_converter");
+        mapping.put("kafka_connect_to_destination", "kafka_topic_write");
+
         return mapping;
     }
 

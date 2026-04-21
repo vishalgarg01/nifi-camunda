@@ -1227,7 +1227,7 @@
     "class": "executor",
     "uiSpecs": {
       "isMultiPath": false,
-      "isDisabled": false,
+      "isDisabled": true,
       "iconType": "two-join",
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
@@ -1404,7 +1404,7 @@
     "class": "executor",
     "uiSpecs": {
       "isMultiPath": false,
-      "isDisabled": false,
+      "isDisabled": true,
       "iconType": "three-join",
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
@@ -1600,7 +1600,7 @@
     "class": "executor",
     "uiSpecs": {
       "isMultiPath": false,
-      "isDisabled": false,
+      "isDisabled": true,
       "iconType": "four-join",
       "iconBackgroundColor": "#0D9488",
       "type": "transform",
@@ -2358,7 +2358,7 @@
     "class": "executor",
     "uiSpecs": {
       "isMultiPath": false,
-      "isDisabled": false,
+      "isDisabled": true,
       "iconType": "note-with-tick",
       "iconBackgroundColor": "#22C55E",
       "type": "file",
@@ -2754,6 +2754,560 @@
         "requestSplitPath",
         "responseSplitPath",
         "parsePathMap"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6613c58296ddbc00126b2daa"
+    },
+    "id": "diff_tool",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "reconciliation",
+      "iconBackgroundColor": "#6366F1",
+      "type": "transform",
+      "label": "Diff Tool",
+      "tooltipText": "Map source data fields to CDP fields to initiate comparison and identify missing data (Reconciliation)",
+      "order": 32
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "orgId": {
+          "type": "string",
+          "title": "Intouch Org",
+          "uiSchema": {
+            "customComponent": "CapOrgSelect"
+          }
+        },
+        "fileTemplate": {
+          "type": "string",
+          "title": "File Template",
+          "default": "{}",
+          "uiSchema": {
+            "customComponent": "AceEditor"
+          }
+        },
+        "diffPath": {
+          "type": "string",
+          "title": "Reconciliation Results Directory"
+        },
+        "existingDateFormat": {
+          "type": "string",
+          "title": "Date Format",
+          "enum": [
+            "yyyy-MM-dd",
+            "dd-MM-yyyy",
+            "dd/MM/yyyy",
+            "dd-MMM-yy",
+            "dd/MM/yy",
+            "MM/dd/yy",
+            "dd-MMM-yyyy",
+            "yyyyMMdd"
+          ],
+          "default": "yyyy-MM-dd",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "minimumYear": {
+          "type": "string",
+          "title": "From Year",
+          "default": "${now():toNumber():minus(31536000000):format('yyyy')}"
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Diff Tool",
+        "fields": []
+      },
+      "required": [
+        "orgId",
+        "fileTemplate",
+        "diffPath",
+        "minimumYear"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6613c58296ddbc00126b2dab"
+    },
+    "id": "diff_tool_test_and_control",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "reconciliation",
+      "iconBackgroundColor": "#6366F1",
+      "type": "transform",
+      "label": "Diff Tool (Test & Control)",
+      "tooltipText": "Map source data fields for test and control (Reconciliation)",
+      "order": 33
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "orgId": {
+          "type": "string",
+          "title": "Intouch Org",
+          "uiSchema": {
+            "customComponent": "CapOrgSelect"
+          }
+        },
+        "fileTemplate": {
+          "type": "string",
+          "title": "File Template",
+          "default": "{}",
+          "uiSchema": {
+            "customComponent": "AceEditor"
+          }
+        },
+        "diffPath": {
+          "type": "string",
+          "title": "Reconciliation Results Directory"
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Diff Tool (Test & Control)",
+        "fields": []
+      },
+      "required": [
+        "orgId",
+        "fileTemplate",
+        "diffPath"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6613c58296ddbc00126b2dac"
+    },
+    "id": "merge_content",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "merge",
+      "iconBackgroundColor": "#0D9488",
+      "type": "transform",
+      "label": "Merge Content",
+      "tooltipText": "Merge Content Block (Merge-content)",
+      "order": 34
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "CorrelationAttributeName": {
+          "type": "string",
+          "title": "Correlation Attribute Name",
+          "default": "kafka.topic"
+        },
+        "MinimumNumberEntries": {
+          "type": "string",
+          "title": "Minimum Number of Entries",
+          "default": "5"
+        },
+        "MaximumNumberEntries": {
+          "type": "string",
+          "title": "Maximum Number of Entries",
+          "default": "1000"
+        },
+        "MaxBinAge": {
+          "type": "string",
+          "title": "Max Bin Age",
+          "default": "1 minutes"
+        },
+        "Replacement value": {
+          "type": "string",
+          "title": "Replacement Value",
+          "default": ",${invokehttp.status.code},${invokehttp.status.message},${invokehttp.response.body},${invokehttp.tx.id}"
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Merge Content",
+        "fields": []
+      },
+      "required": [
+        "CorrelationAttributeName",
+        "MinimumNumberEntries",
+        "MaximumNumberEntries",
+        "MaxBinAge",
+        "Replacement value"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813c58296ddbc00126b3a01"
+    },
+    "id": "fetch_related_files",
+    "context": "connectplus",
+    "class": "source",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "sftp",
+      "iconBackgroundColor": "#3B82F6",
+      "type": "sftp",
+      "label": "Fetch Related Files (SFTP)",
+      "tooltipText": "Fetches companion files from SFTP based on regex patterns, bundles them into a ZIP archive with retry logic",
+      "order": 35
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "title": "Hostname",
+          "description": "SFTP hostname",
+          "minLength": 5,
+          "maxLength": 100,
+          "uiSchema": {
+            "customComponent": "ConfigManagerSelect"
+          }
+        },
+        "username": {
+          "type": "string",
+          "title": "Username",
+          "description": "SFTP username",
+          "uiSchema": {
+            "customComponent": "ConfigManagerSelect"
+          }
+        },
+        "password": {
+          "type": "string",
+          "title": "Password",
+          "description": "SFTP password",
+          "useSecret": true,
+          "uiSchema": {
+            "customComponent": "ConfigManagerSelect"
+          }
+        },
+        "sourceDirectory": {
+          "type": "string",
+          "title": "Source Directory",
+          "description": "Remote source directory to read from",
+          "uiSchema": {
+            "customComponent": "ConfigManagerSelect"
+          }
+        },
+        "fileFilterRegex": {
+          "type": "string",
+          "title": "ListSFTP File Filter Regex",
+          "description": "Regex to match only FILE1 pattern on SFTP (e.g. TktCoupon_.*\\.dat\\.gpg)",
+          "default": ".*"
+        },
+        "file1Pattern": {
+          "type": "string",
+          "title": "FILE1 File Pattern",
+          "description": "Regex with one capture group for shared token (e.g. ^TktCoupon_(.*)\\.dat\\.gpg$)"
+        },
+        "file2Pattern": {
+          "type": "string",
+          "title": "FILE2 File Pattern",
+          "description": "Regex with same capture group structure (e.g. ^TktDocument_(.*)\\.dat\\.gpg$)"
+        },
+        "file3Pattern": {
+          "type": "string",
+          "title": "FILE3 File Pattern",
+          "description": "Optional regex for a third companion file with same capture group structure"
+        },
+        "retryTimeoutHours": {
+          "type": "string",
+          "title": "Retry Timeout Hours",
+          "description": "Max hours to wait for companion files before giving up",
+          "default": "1"
+        },
+        "outputZipNamePattern": {
+          "type": "string",
+          "title": "Output ZIP Name Pattern",
+          "description": "Pattern for output ZIP filename. Use {timestamp} placeholder",
+          "default": "joined_{timestamp}.zip"
+        },
+        "processedDirectory": {
+          "type": "string",
+          "title": "Move Destination Directory",
+          "description": "SFTP directory to move files after processing",
+          "uiSchema": {
+            "customComponent": "ConfigManagerSelect"
+          }
+        },
+        "port": {
+          "type": "number",
+          "title": "Port",
+          "description": "SFTP port",
+          "default": 22
+        },
+        "searchDirRecursively": {
+          "type": "string",
+          "title": "Search Directory Recursively",
+          "description": "Search nested folders when listing files",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Fetch Related Files. Ensure you understand the impact before making changes.",
+        "fields": [
+          "file3Pattern",
+          "retryTimeoutHours",
+          "outputZipNamePattern",
+          "searchDirRecursively"
+        ]
+      },
+      "required": [
+        "hostname",
+        "username",
+        "password",
+        "sourceDirectory",
+        "fileFilterRegex",
+        "file1Pattern",
+        "file2Pattern",
+        "processedDirectory",
+        "port"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813c58296ddbc00126b3a02"
+    },
+    "id": "decrypt_related_files",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "open-lock",
+      "iconBackgroundColor": "#10B981",
+      "type": "decrypt",
+      "label": "Decrypt Related Files",
+      "tooltipText": "Decrypts related files inside a ZIP archive (PGP or AES), auto-detects encryption and re-packages as ZIP",
+      "order": 36
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "isEnabled": {
+          "type": "string",
+          "title": "Enable Decryption Processing",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "encryptionType": {
+          "type": "string",
+          "title": "Expected Encryption Type",
+          "enum": [
+            "PGP",
+            "AES"
+          ],
+          "default": "PGP",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "privateKeyPath": {
+          "type": "string",
+          "title": "PGP Private Key File",
+          "description": "Path to PGP private key file"
+        },
+        "passphrase": {
+          "type": "string",
+          "title": "PGP Key Passphrase",
+          "description": "Passphrase for the PGP private key",
+          "useSecret": true
+        },
+        "aesPassword": {
+          "type": "string",
+          "title": "AES Password",
+          "description": "Password for AES decryption (only if encryption type is AES)",
+          "useSecret": true
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Decrypt Related Files",
+        "fields": [
+          "aesPassword"
+        ]
+      },
+      "required": [
+        "isEnabled",
+        "encryptionType",
+        "privateKeyPath",
+        "passphrase"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813c58296ddbc00126b3a03"
+    },
+    "id": "join_related_files",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "two-join",
+      "iconBackgroundColor": "#0D9488",
+      "type": "transform",
+      "label": "Join Related Files (SQL)",
+      "tooltipText": "Joins CSV/delimited files from a ZIP archive using SQLite SQL JOIN, outputs a single CSV file",
+      "order": 37
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "joinQuery": {
+          "type": "string",
+          "title": "SQL JOIN Query",
+          "description": "SQL JOIN query. Tables named table1, table2, etc. alphabetically by filename (e.g. SELECT table1.*, table2.* FROM table1 INNER JOIN table2 ON table1.col = table2.col)"
+        },
+        "outputFilename": {
+          "type": "string",
+          "title": "Output Filename",
+          "description": "Output CSV filename. Supports NiFi Expression Language (e.g. merg_${now():format('yyyy-MM-dd')}.csv)",
+          "default": "joined_output.csv"
+        },
+        "includeHeader": {
+          "type": "string",
+          "title": "Include Header Row",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "csvDelimiter": {
+          "type": "string",
+          "title": "CSV Delimiter",
+          "description": "Delimiter used in the CSV files (e.g. , or |)",
+          "default": ","
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Join Related Files",
+        "fields": []
+      },
+      "required": [
+        "joinQuery",
+        "outputFilename",
+        "csvDelimiter"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813c58296ddbc00126b3a09"
+    },
+    "id": "json_to_csv_converter",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "csv",
+      "iconBackgroundColor": "#000000",
+      "type": "transform",
+      "label": "Transform (JSON to CSV)",
+      "tooltipText": "convert json to csv (JSON-to-CSV-Converter)",
+      "order": 38
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "record-reader": {
+          "type": "string",
+          "title": "Record Reader",
+          "description": "Record Reader",
+          "oneOf": [
+            {
+              "const": "8a017c83-018e-1000-0000-0000163e6dac",
+              "title": "json"
+            },
+            {
+              "const": "5c5b9607-0173-1000-87ad-a0b9ca44885f",
+              "title": "csv"
+            },
+            {
+              "const": "1e3ae3f8-0195-1000-0000-00000e1a5866",
+              "title": "avro"
+            }
+          ],
+          "default": "8a017c83-018e-1000-0000-0000163e6dac",
+          "uiSchema": {
+            "customComponent": "CapRadioGroup"
+          }
+        },
+        "record-writer": {
+          "type": "string",
+          "title": "Record Writer",
+          "description": "Record writer",
+          "oneOf": [
+            {
+              "const": "7062a35b-0173-1000-6687-2fe95293e13b",
+              "title": "json"
+            },
+            {
+              "const": "87a43677-0178-1000-ffff-ffffd1da937f",
+              "title": "csv"
+            }
+          ],
+          "default": "87a43677-0178-1000-ffff-ffffd1da937f",
+          "uiSchema": {
+            "customComponent": "CapRadioGroup"
+          }
+        },
+        "groupBy": {
+          "type": "string",
+          "title": "Group By",
+          "description": "groupBy",
+          "default": "/"
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": false,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for JSON to CSV",
+        "fields": []
+      },
+      "required": [
+        "record-reader",
+        "record-writer",
+        "groupBy"
       ]
     }
   }
