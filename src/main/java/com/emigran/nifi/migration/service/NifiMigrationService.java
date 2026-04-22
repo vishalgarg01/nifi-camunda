@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "BjXodKPYCbowa7cr02Od0ZwKT";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "YEzd1lE9qtNJiCcgio1KZys8D4ww9c6KtKK5j2My";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "6uUrbUZ7VJgVTjoclSD2hX9o5";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "1XAdo7C4FaQ3sHV0cgazgOJxhFkT8fH04swhv2MS";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -1126,7 +1126,8 @@ public class NifiMigrationService {
         String orgId = properties.getConfigManagerOrgId();
         String orgPart = (orgId != null && !orgId.trim().isEmpty()) ? orgId.trim() : "unknown-org";
         String workspacePart = workspace != null && workspace.getId() != null ? workspace.getId().toString() : "unknown-workspace";
-        return Paths.get(baseDir, "config-manager", "workspace-" + workspacePart + ".json");
+        return Paths.get(baseDir, "config-manager", orgPart, orgPart + "_" + workspacePart + ".json");
+
     }
 
     private static final class ConfigCache {

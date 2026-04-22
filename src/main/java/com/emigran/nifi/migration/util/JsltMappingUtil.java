@@ -328,7 +328,10 @@ public final class JsltMappingUtil {
     /**
      * Builds the default time suffix to append when input is date-only.
      * E.g., for format "dd-MM-yyyy HH:mm:ss" returns " 00:00:00",
-     *        for format "dd-MM-yyyy'T'HH:mm:ss" returns "T00:00:00".
+     *        for format "dd-MM-yyyy'T'HH:mm:ss" returns "T00:00:00",
+     *        for format "yyyy-MM-dd HH:mm:ssXXX" returns " 00:00:00+00:00".
+     * Timezone tokens (X/Z variants) are substituted with a zero offset so the suffix
+     * parses cleanly against the same format spec used by parse-time.
      */
     private static String buildDefaultTimeSuffix(String dateFormat) {
         int hhIndex = dateFormat.indexOf("HH");
@@ -344,11 +347,18 @@ public final class JsltMappingUtil {
         String separatorAndTimeFmt = dateFormat.substring(sepStart);
         // Strip single quotes used for literal characters in date format patterns
         separatorAndTimeFmt = separatorAndTimeFmt.replace("'", "");
+        // Replace longest tokens first to avoid partial-match collisions (e.g. XXX before XX before X).
         return separatorAndTimeFmt
                 .replace("HH", "00")
                 .replace("mm", "00")
+                .replace("SSS", "000")
                 .replace("ss", "00")
-                .replace("SSS", "000");
+                .replace("XXX", "+00:00")
+                .replace("XX", "+0000")
+                .replace("X", "Z")
+                .replace("ZZZ", "+0000")
+                .replace("ZZ", "+0000")
+                .replace("Z", "+0000");
     }
 
     private static String parseExpToJslt(String inner) {
@@ -379,6 +389,15 @@ public final class JsltMappingUtil {
         // which only captures the first '...'.concat( and silently drops the rest of the chain.
         if (inner.contains(".concat(")) {
             String chain = parseConcatChain(inner);
+            if (chain != null) return chain;
+        }
+
+        // Plus-joined chain: TOKEN + TOKEN + TOKEN... where each TOKEN is 'literal',
+        // 'hdr{FIELD}' (quoted), or bare hdr{FIELD}. Must run before the single-field fallback
+        // below, which would otherwise grab only the first hdr and swallow subsequent
+        // 'hdr{X}' tokens as plain string literals.
+        if (inner.contains("+")) {
+            String chain = parsePlusChain(inner);
             if (chain != null) return chain;
         }
 
@@ -442,6 +461,31 @@ public final class JsltMappingUtil {
             skipWhitespace(inner, cursor);
             if (cursor[0] >= inner.length() || inner.charAt(cursor[0]) != ')') return null;
             cursor[0]++;
+        }
+        if (parts.size() < 2) return null;
+        return String.join(" + ", parts);
+    }
+
+    /**
+     * Parses a chain like {@code 'hdr{A}'+'_'+'hdr{B}'} or {@code hdr{A} + hdr{B} + ' lit '} into
+     * a JSLT string concatenation (joined with {@code +}). Each token may be {@code 'quoted literal'}
+     * (where the literal may itself be {@code hdr{FIELD}}) or a bare {@code hdr{FIELD}}.
+     * Returns null if the input does not fully match the expected shape.
+     */
+    private static String parsePlusChain(String inner) {
+        List<String> parts = new ArrayList<>();
+        int[] cursor = new int[] { 0 };
+        String tok = readConcatToken(inner, cursor);
+        if (tok == null) return null;
+        parts.add(tok);
+        while (cursor[0] < inner.length()) {
+            skipWhitespace(inner, cursor);
+            if (cursor[0] >= inner.length()) break;
+            if (inner.charAt(cursor[0]) != '+') return null;
+            cursor[0]++;
+            tok = readConcatToken(inner, cursor);
+            if (tok == null) return null;
+            parts.add(tok);
         }
         if (parts.size() < 2) return null;
         return String.join(" + ", parts);
