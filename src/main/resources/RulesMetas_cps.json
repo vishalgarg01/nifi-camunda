@@ -1220,606 +1220,6 @@
   },
   {
     "_id": {
-      "$oid": "6613c58296ddbc00126b2d97"
-    },
-    "id": "two_join",
-    "context": "connectplus",
-    "class": "executor",
-    "uiSpecs": {
-      "isMultiPath": false,
-      "isDisabled": true,
-      "iconType": "two-join",
-      "iconBackgroundColor": "#0D9488",
-      "type": "transform",
-      "label": "Join files (2)",
-      "tooltipText": "Join two files based on specified headers (Join-Data)",
-      "order": 15
-    },
-    "config": {
-      "type": "object",
-      "properties": {
-        "joinType": {
-          "type": "string",
-          "title": "Files 1-2 Join Type",
-          "enum": [
-            "LEFT_OUTER_JOIN",
-            "OUTER_JOIN",
-            "INNER_JOIN",
-            "RIGHT_OUTER_JOIN"
-          ],
-          "default": "LEFT_OUTER_JOIN",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "filesDelimiter": {
-          "type": "string",
-          "title": "All Files Delimiter"
-        },
-        "fileOneRegex": {
-          "type": "string",
-          "title": "File 1 Regex"
-        },
-        "fileOneHeaders": {
-          "type": "string",
-          "title": "File 1 Headers"
-        },
-        "fileTwoRegex": {
-          "type": "string",
-          "title": "File 2 Regex"
-        },
-        "fileTwoHeaders": {
-          "type": "string",
-          "title": "File 2 Headers"
-        },
-        "joinedFilename": {
-          "type": "string",
-          "title": "Output Filename"
-        },
-        "joinUseCase": {
-          "type": "string",
-          "title": "File Join Use Case",
-          "enum": [
-            "TRANSACTION_LINE_ITEM",
-            "NONE"
-          ],
-          "default": "NONE",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "useAlphabeticalSort": {
-          "type": "string",
-          "title": "Use Alphabetical Sort",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "isMergeBasedOnName": {
-          "type": "string",
-          "title": "Merge based on common Name",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileTemplate1": {
-          "type": "string",
-          "title": "Merge based on common Name Template File One"
-        },
-        "fileTemplate2": {
-          "type": "string",
-          "title": "Merge based on common Name Template File Two"
-        },
-        "isHeaderlessFile1": {
-          "type": "string",
-          "title": "File One is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "isHeaderlessFile2": {
-          "type": "string",
-          "title": "File Two is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders1": {
-          "type": "string",
-          "title": "File One Mention Header names(for use in mapping and expressions)"
-        },
-        "fileHeaders2": {
-          "type": "string",
-          "title": "File Two Mention Header names(for use in mapping and expressions)"
-        },
-        "matchallregex": {
-          "type": "string",
-          "title": "Match All Regex",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "alluniquematch": {
-          "type": "string",
-          "title": "All Unique Match",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        }
-      },
-      "advancedSection": {
-        "showAdvancedSection": false,
-        "title": "Advanced Properties",
-        "description": "Advanced properties for Join Two Files",
-        "fields": []
-      },
-      "required": [
-        "joinType",
-        "filesDelimiter",
-        "fileOneRegex",
-        "fileOneHeaders",
-        "fileTwoRegex",
-        "fileTwoHeaders",
-        "joinedFilename",
-        "joinUseCase"
-      ]
-    }
-  },
-  {
-    "_id": {
-      "$oid": "6613c58296ddbc00126b2d98"
-    },
-    "id": "three_join",
-    "context": "connectplus",
-    "class": "executor",
-    "uiSpecs": {
-      "isMultiPath": false,
-      "isDisabled": true,
-      "iconType": "three-join",
-      "iconBackgroundColor": "#0D9488",
-      "type": "transform",
-      "label": "Join files (3)",
-      "tooltipText": "Join three files based on specified headers (Join-Data)",
-      "order": 16
-    },
-    "config": {
-      "type": "object",
-      "properties": {
-        "oneTwoJoinType": {
-          "type": "string",
-          "title": "Files 1-2 Join Type",
-          "enum": [
-            "LEFT_OUTER_JOIN",
-            "OUTER_JOIN",
-            "INNER_JOIN"
-          ],
-          "default": "LEFT_OUTER_JOIN",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "oneThreeJoinType": {
-          "type": "string",
-          "title": "Files 1-3 Join Type",
-          "enum": [
-            "LEFT_OUTER_JOIN",
-            "OUTER_JOIN",
-            "INNER_JOIN"
-          ],
-          "default": "LEFT_OUTER_JOIN",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "filesDelimiter": {
-          "type": "string",
-          "title": "All Files Delimiter"
-        },
-        "fileOneRegex": {
-          "type": "string",
-          "title": "File 1 Regex"
-        },
-        "fileOneHeaders": {
-          "type": "string",
-          "title": "File 1 Headers"
-        },
-        "fileTwoRegex": {
-          "type": "string",
-          "title": "File 2 Regex"
-        },
-        "fileTwoHeaders": {
-          "type": "string",
-          "title": "File 2 Headers"
-        },
-        "fileThreeRegex": {
-          "type": "string",
-          "title": "File 3 Regex"
-        },
-        "fileThreeHeaders": {
-          "type": "string",
-          "title": "File 3 Headers"
-        },
-        "joinedFilename": {
-          "type": "string",
-          "title": "Output Filename"
-        },
-        "joinUseCase": {
-          "type": "string",
-          "title": "File Join Use Case",
-          "enum": [
-            "TRANSACTION_LINE_ITEM",
-            "NONE"
-          ],
-          "default": "NONE",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders1": {
-          "type": "string",
-          "title": "File One Mention Header names(for use in mapping and expressions)"
-        },
-        "isHeaderlessFile1": {
-          "type": "string",
-          "title": "File One is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders2": {
-          "type": "string",
-          "title": "File Two Mention Header names(for use in mapping and expressions)"
-        },
-        "isHeaderlessFile2": {
-          "type": "string",
-          "title": "File Two is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "isHeaderlessFile3": {
-          "type": "string",
-          "title": "File Three is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders3": {
-          "type": "string",
-          "title": "File Three Mention Header names(for use in mapping and expressions)"
-        },
-        "isMergeBasedOnName": {
-          "type": "string",
-          "title": "Merge based on common Name",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileTemplate1": {
-          "type": "string",
-          "title": "Merge based on common Name Template File One"
-        },
-        "fileTemplate2": {
-          "type": "string",
-          "title": "Merge based on common Name Template File Two"
-        },
-        "fileTemplate3": {
-          "type": "string",
-          "title": "Merge based on common Name Template File Three"
-        },
-        "useAlphabeticalSort": {
-          "type": "string",
-          "title": "Use Alphabetical Sort",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "default": "false",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        }
-      },
-      "advancedSection": {
-        "showAdvancedSection": false,
-        "title": "Advanced Properties",
-        "description": "Advanced properties for Join Three Files",
-        "fields": []
-      },
-      "required": [
-        "oneTwoJoinType",
-        "oneThreeJoinType",
-        "filesDelimiter",
-        "fileOneRegex",
-        "fileOneHeaders",
-        "fileTwoRegex",
-        "fileTwoHeaders",
-        "fileThreeRegex",
-        "fileThreeHeaders",
-        "joinedFilename",
-        "joinUseCase"
-      ]
-    }
-  },
-  {
-    "_id": {
-      "$oid": "6613c58296ddbc00126b2d9a"
-    },
-    "id": "four_join",
-    "context": "connectplus",
-    "class": "executor",
-    "uiSpecs": {
-      "isMultiPath": false,
-      "isDisabled": true,
-      "iconType": "four-join",
-      "iconBackgroundColor": "#0D9488",
-      "type": "transform",
-      "label": "Join files (4)",
-      "tooltipText": "Join four files based on specified headers (Join-Data)",
-      "order": 17
-    },
-    "config": {
-      "type": "object",
-      "properties": {
-        "oneTwoJoinType": {
-          "type": "string",
-          "title": "Files 1-2 Join Type",
-          "enum": [
-            "LEFT_OUTER_JOIN",
-            "OUTER_JOIN",
-            "INNER_JOIN"
-          ],
-          "default": "LEFT_OUTER_JOIN",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "oneThreeJoinType": {
-          "type": "string",
-          "title": "Files 1-3 Join Type",
-          "enum": [
-            "LEFT_OUTER_JOIN",
-            "OUTER_JOIN",
-            "INNER_JOIN"
-          ],
-          "default": "LEFT_OUTER_JOIN",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "oneFourJoinType": {
-          "type": "string",
-          "title": "Files 1-4 Join Type",
-          "enum": [
-            "LEFT_OUTER_JOIN",
-            "OUTER_JOIN",
-            "INNER_JOIN"
-          ],
-          "default": "LEFT_OUTER_JOIN",
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "filesDelimiter": {
-          "type": "string",
-          "title": "All Files Delimiter"
-        },
-        "fileOneRegex": {
-          "type": "string",
-          "title": "File 1 Regex"
-        },
-        "fileOneHeaders": {
-          "type": "string",
-          "title": "File 1 Headers"
-        },
-        "fileTwoRegex": {
-          "type": "string",
-          "title": "File 2 Regex"
-        },
-        "fileTwoHeaders": {
-          "type": "string",
-          "title": "File 2 Headers"
-        },
-        "fileThreeRegex": {
-          "type": "string",
-          "title": "File 3 Regex"
-        },
-        "fileThreeHeaders": {
-          "type": "string",
-          "title": "File 3 Headers"
-        },
-        "fileFourRegex": {
-          "type": "string",
-          "title": "File 4 Regex"
-        },
-        "fileFourHeaders": {
-          "type": "string",
-          "title": "File 4 Headers"
-        },
-        "joinedFilename": {
-          "type": "string",
-          "title": "Output Filename"
-        },
-        "isHeaderlessFile1": {
-          "type": "string",
-          "title": "File One is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders1": {
-          "type": "string",
-          "title": "File One Mention Header names(for use in mapping and expressions)"
-        },
-        "isHeaderlessFile2": {
-          "type": "string",
-          "title": "File Two is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders2": {
-          "type": "string",
-          "title": "File Two Mention Header names(for use in mapping and expressions)"
-        },
-        "isHeaderlessFile3": {
-          "type": "string",
-          "title": "File Three is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders3": {
-          "type": "string",
-          "title": "File Three Mention Header names(for use in mapping and expressions)"
-        },
-        "isHeaderlessFile4": {
-          "type": "string",
-          "title": "File Four is Headerless",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileHeaders4": {
-          "type": "string",
-          "title": "File Four Mention Header names(for use in mapping and expressions)"
-        },
-        "useAlphabeticalSort": {
-          "type": "string",
-          "title": "Use Alphabetical Sort",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "isMergeBasedOnName": {
-          "type": "string",
-          "title": "Merge based on common Name",
-          "default": "false",
-          "enum": [
-            "true",
-            "false"
-          ],
-          "uiSchema": {
-            "customComponent": "CapSelect"
-          }
-        },
-        "fileTemplate1": {
-          "type": "string",
-          "title": "Merge based on common Name Template File One"
-        },
-        "fileTemplate2": {
-          "type": "string",
-          "title": "Merge based on common Name Template File Two"
-        },
-        "fileTemplate3": {
-          "type": "string",
-          "title": "Merge based on common Name Template File Three"
-        },
-        "fileTemplate4": {
-          "type": "string",
-          "title": "Merge based on common Name Template File Four"
-        }
-      },
-      "advancedSection": {
-        "showAdvancedSection": false,
-        "title": "Advanced Properties",
-        "description": "Advanced properties for Join Four Files",
-        "fields": []
-      },
-      "required": [
-        "oneTwoJoinType",
-        "oneThreeJoinType",
-        "oneFourJoinType",
-        "filesDelimiter",
-        "fileOneRegex",
-        "fileOneHeaders",
-        "fileTwoRegex",
-        "fileTwoHeaders",
-        "fileThreeRegex",
-        "fileThreeHeaders",
-        "fileFourRegex",
-        "fileFourHeaders",
-        "joinedFilename"
-      ]
-    }
-  },
-  {
-    "_id": {
       "$oid": "6613c58296ddbc00126b2d8d"
     },
     "id": "event_notification_read",
@@ -2347,35 +1747,6 @@
       "required": [
         "joltTransformation"
       ]
-    }
-  },
-  {
-    "_id": {
-      "$oid": "6613c58296ddbc00126b2d86"
-    },
-    "id": "ok_file_3",
-    "context": "connectplus",
-    "class": "executor",
-    "uiSpecs": {
-      "isMultiPath": false,
-      "isDisabled": true,
-      "iconType": "note-with-tick",
-      "iconBackgroundColor": "#22C55E",
-      "type": "file",
-      "label": "OK File",
-      "tooltipText": "Ok File processor (Ok-file)",
-      "order": 26
-    },
-    "config": {
-      "type": "object",
-      "properties": {},
-      "advancedSection": {
-        "showAdvancedSection": false,
-        "title": "Advanced Properties",
-        "description": "Advanced properties for OK File Processor",
-        "fields": []
-      },
-      "required": []
     }
   },
   {
@@ -3170,7 +2541,7 @@
     "_id": {
       "$oid": "6813c58296ddbc00126b3a03"
     },
-    "id": "join_related_files",
+    "id": "file_join",
     "context": "connectplus",
     "class": "executor",
     "uiSpecs": {
@@ -3186,10 +2557,20 @@
     "config": {
       "type": "object",
       "properties": {
+        "tableFilePatterns": {
+          "type": "string",
+          "title": "Table File Patterns",
+          "description": "Comma-separated regex patterns. Pattern 1 maps to table1, pattern 2 to table2, etc. Only zip entries matching a pattern are loaded. e.g. TktCoupon_.*\\.dat, TktDocument_.*\\.dat"
+        },
+        "headerlessTableMappings": {
+          "type": "string",
+          "title": "Headerless Table Mappings",
+          "description": "Optional JSON map from 1-based table index to a delimiter-separated header line. Use when the input files are headerless. e.g. {\"1\": \"col1|col2|col3\", \"2\": \"colA|colB\"}"
+        },
         "joinQuery": {
           "type": "string",
           "title": "SQL JOIN Query",
-          "description": "SQL JOIN query. Tables named table1, table2, etc. alphabetically by filename (e.g. SELECT table1.*, table2.* FROM table1 INNER JOIN table2 ON table1.col = table2.col)"
+          "description": "SQL JOIN query. Tables named table1, table2, etc. in the order of Table File Patterns (e.g. SELECT table1.*, table2.* FROM table1 INNER JOIN table2 ON table1.col = table2.col)"
         },
         "outputFilename": {
           "type": "string",
@@ -3209,11 +2590,10 @@
             "customComponent": "CapSelect"
           }
         },
-        "csvDelimiter": {
+        "outputCsvDelimiter": {
           "type": "string",
-          "title": "CSV Delimiter",
-          "description": "Delimiter used in the CSV files (e.g. , or |)",
-          "default": ","
+          "title": "Output CSV Delimiter",
+          "description": "Optional delimiter for the output CSV. If empty, falls back to the input CSV Delimiter."
         }
       },
       "advancedSection": {
@@ -3223,9 +2603,134 @@
         "fields": []
       },
       "required": [
+        "tableFilePatterns",
         "joinQuery",
         "outputFilename",
         "csvDelimiter"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813c58296ddbc00126b3a04"
+    },
+    "id": "webhook_write",
+    "context": "connectplus",
+    "class": "executor",
+    "uiSpecs": {
+      "isMultiPath": false,
+      "isDisabled": false,
+      "iconType": "http",
+      "iconBackgroundColor": "#F97316",
+      "type": "api",
+      "label": "Webhook Write",
+      "tooltipText": "Call any external webhook with basic auth support, rate limiting and retries (Connect-to-destination)",
+      "order": 38
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "webhookEndpoint": {
+          "type": "string",
+          "title": "Webhook Endpoint",
+          "description": "Webhook Endpoint"
+        },
+        "apiMethod": {
+          "type": "string",
+          "title": "API Method",
+          "enum": [
+            "POST",
+            "PUT",
+            "GET"
+          ],
+          "default": "POST",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        },
+        "AttributesToSend": {
+          "type": "string",
+          "title": "Attributes to sent as headers",
+          "default": ".*"
+        },
+        "additionalHeaders": {
+          "type": "string",
+          "title": "Additional Headers",
+          "description": "Additional Headers",
+          "default": ""
+        },
+        "Max Retry": {
+          "type": "string",
+          "title": "Max Retry",
+          "default": "10"
+        },
+        "Extra Retry Error Codes": {
+          "type": "string",
+          "title": "Extra Retry Error Codes",
+          "default": "429"
+        },
+        "Extra no Retry Error Codes": {
+          "type": "string",
+          "title": "Extra no Retry Error Codes",
+          "default": "400"
+        },
+        "Read Timeout": {
+          "type": "string",
+          "title": "Read Timeout",
+          "default": "30 secs"
+        },
+        "Connection Timeout": {
+          "type": "string",
+          "title": "Connection Timeout",
+          "default": "30 secs"
+        },
+        "Rate": {
+          "type": "string",
+          "title": "Number of Flowfiles",
+          "default": "1000"
+        },
+        "Time Period": {
+          "type": "string",
+          "title": "Time Duration",
+          "default": "1"
+        },
+        "Time Unit": {
+          "type": "string",
+          "title": "Time Duration",
+          "enum": [
+            "SECONDS",
+            "MINUTES",
+            "HOURS"
+          ],
+          "default": "MINUTES",
+          "uiSchema": {
+            "customComponent": "CapSelect"
+          }
+        }
+      },
+      "advancedSection": {
+        "showAdvancedSection": true,
+        "title": "Advanced Properties",
+        "description": "Advanced properties for Webhook Write. Ensure you understand the impact before making changes.",
+        "fields": [
+          "additionalHeaders",
+          "Max Retry",
+          "Extra Retry Error Codes",
+          "Extra no Retry Error Codes",
+          "Read Timeout",
+          "Connection Timeout",
+          "Rate",
+          "Time Period",
+          "Time Unit"
+        ]
+      },
+      "required": [
+        "webhookEndpoint",
+        "apiMethod",
+        "AttributesToSend",
+        "Rate",
+        "Time Period",
+        "Time Unit"
       ]
     }
   },

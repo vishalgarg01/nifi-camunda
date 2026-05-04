@@ -28,6 +28,8 @@ public final class JsltMappingUtil {
     private static final Pattern SUM_HDR_PATTERN = Pattern.compile("^sum\\{hdr\\{([^}]+)\\}\\}$");
     private static final Pattern MULTIPLY_WITH_ELVIS_PATTERN = Pattern.compile(
             "^\\s*hdr\\{([^}]+)\\}\\s*\\*\\s*\\(\\s*hdr\\{([^}]+)\\}\\s*\\?:\\s*(.+?)\\s*\\)\\s*$");
+    private static final Pattern BOOL_EQ_EMPTY_TERM_PATTERN = Pattern.compile(
+            "^\\s*(['\"])hdr\\{([^}]+)\\}\\1\\s*\\.equals\\(\\s*(?:''|\"\")\\s*\\)\\s*$");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -295,7 +297,12 @@ public final class JsltMappingUtil {
             String jsltExpr = parseExpToJslt(inner);
             if (jsltExpr != null && dateColumnOutputKey != null && dateColumnOutputKey.equals(outputKey)
                     && existingDateFormat != null && newDateFormat != null) {
-                return buildFormatTimeParseTime(jsltExpr, existingDateFormat, newDateFormat, timezoneId);
+                // When the user wrote .equals("")?<default>:<value>, the ternary already handles
+                // null/empty inputs with their chosen fallback — adding our outer null-guard would
+                // override that fallback with `null`. Skip the guard in that case.
+                boolean userHandlesEmpty = inner.contains(".equals(\"\")") || inner.contains(".equals('')");
+                String guard = userHandlesEmpty ? null : buildHdrFieldsGuard(inner);
+                return buildFormatTimeParseTime(jsltExpr, existingDateFormat, newDateFormat, timezoneId, guard, userHandlesEmpty);
             }
             return jsltExpr != null ? jsltExpr : "null";
         }
@@ -303,16 +310,40 @@ public final class JsltMappingUtil {
         String fieldExpr = toJsltSelector(v);
         if (dateColumnOutputKey != null && dateColumnOutputKey.equals(outputKey)
                 && existingDateFormat != null && newDateFormat != null) {
-            return buildFormatTimeParseTime(fieldExpr, existingDateFormat, newDateFormat, timezoneId);
+            return buildFormatTimeParseTime(fieldExpr, existingDateFormat, newDateFormat, timezoneId, fieldExpr, false);
         }
         return fieldExpr;
     }
 
-    private static String buildFormatTimeParseTime(String expr, String existingDateFormat, String newDateFormat, String timezoneId) {
+    /**
+     * Builds a JSLT truthy guard from the {@code hdr{FIELD}} references inside an
+     * {@code exp{...}} body. JSLT treats {@code null} and {@code ""} as falsy, so
+     * {@code if (.X and .Y) ...} short-circuits to {@code null} when any source field
+     * is missing or empty — preventing {@code parse-time("null ...", ...)} failures
+     * when the input row has nulls. Returns {@code null} if no hdr fields are present
+     * (e.g. pure const expressions), so the caller can skip the wrap.
+     */
+    private static String buildHdrFieldsGuard(String inner) {
+        if (inner == null) return null;
+        LinkedHashSet<String> fields = new LinkedHashSet<>();
+        Matcher m = HDR_IN_EXP_PATTERN.matcher(inner);
+        while (m.find()) {
+            fields.add(m.group(1).trim());
+        }
+        if (fields.isEmpty()) return null;
+        List<String> sels = new ArrayList<>();
+        for (String f : fields) sels.add(toJsltSelector(f));
+        return String.join(" and ", sels);
+    }
+
+    private static String buildFormatTimeParseTime(String expr, String existingDateFormat, String newDateFormat,
+                                                   String timezoneId, String nullGuard, boolean skipDefaultTimeWrap) {
         // If the format expects a time component (contains HH), add a fallback that appends
-        // a default time when the input value lacks one (detected by absence of ':')
+        // a default time when the input value lacks one (detected by absence of ':').
+        // Skipped when the caller is a ternary that already produces complete date strings
+        // — substituting an if-else into the wrapper creates nested dangling-else ambiguity.
         String effectiveExpr = expr;
-        if (existingDateFormat != null && existingDateFormat.contains("HH")) {
+        if (!skipDefaultTimeWrap && existingDateFormat != null && existingDateFormat.contains("HH")) {
             String defaultTimeSuffix = buildDefaultTimeSuffix(existingDateFormat);
             if (defaultTimeSuffix != null) {
                 effectiveExpr = "if (contains(" + expr + ", \":\")) " + expr
@@ -321,8 +352,12 @@ public final class JsltMappingUtil {
         }
         String parseCall = "parse-time(" + effectiveExpr + ", " + quoteJsltString(existingDateFormat)
                 + (timezoneId != null && !timezoneId.isEmpty() ? ", " + quoteJsltString(timezoneId) : "") + ")";
-        return "format-time(" + parseCall + ", " + quoteJsltString(newDateFormat)
+        String formatCall = "format-time(" + parseCall + ", " + quoteJsltString(newDateFormat)
                 + (timezoneId != null && !timezoneId.isEmpty() ? ", " + quoteJsltString(timezoneId) : "") + ")";
+        if (nullGuard != null && !nullGuard.isEmpty()) {
+            return "if (" + nullGuard + ") " + formatCall + " else null";
+        }
+        return formatCall;
     }
 
     /**
@@ -382,6 +417,20 @@ public final class JsltMappingUtil {
                     mulMatcher.group(2).trim(),
                     mulMatcher.group(3).trim());
             if (chain != null) return chain;
+        }
+
+        // Ternary 'hdr{X}'.equals("")?<thenArm>:<elseArm> — fallback to alternate field/literal.
+        // Must run before the concat/plus/single-hdr fallback paths, which would otherwise grab
+        // the first hdr and silently drop the rest of the expression.
+        if (inner.contains(".equals(") && inner.contains("?")) {
+            String ternary = parseTernaryEqualsEmpty(inner);
+            if (ternary != null) return ternary;
+        }
+
+        // Boolean expression of 'hdr{X}'.equals('') terms joined by &&/||, optionally wrapped in !(...)
+        if (inner.contains(".equals(")) {
+            String bool = parseBooleanEqualsEmpty(inner);
+            if (bool != null) return bool;
         }
 
         // Multi-hop concat chain: TOKEN.concat(TOKEN).concat(TOKEN)... where each TOKEN is
@@ -501,8 +550,8 @@ public final class JsltMappingUtil {
         int i = cursor[0];
         if (i >= s.length()) return null;
         char c = s.charAt(i);
-        if (c == '\'') {
-            int end = s.indexOf('\'', i + 1);
+        if (c == '\'' || c == '"') {
+            int end = s.indexOf(c, i + 1);
             if (end < 0) return null;
             String literal = s.substring(i + 1, end);
             cursor[0] = end + 1;
@@ -554,6 +603,176 @@ public final class JsltMappingUtil {
             fallbackExpr = "number(" + quoteJsltString(fb) + ")";
         }
         return "number(" + f1Sel + ") * (if (" + f2Sel + ") number(" + f2Sel + ") else " + fallbackExpr + ")";
+    }
+
+    /**
+     * Parses {@code <quote>hdr{F}<quote>.equals("")?<thenArm>:<elseArm>} into JSLT
+     * {@code if (.F) <elseArm> else <thenArm>} — truthy semantics catch both JSON
+     * {@code null} and empty string, so the {@code thenArm} fallback fires for either,
+     * matching user intent (which {@code .equals("")} alone does not, since JSLT
+     * evaluates {@code null == ""} as false).
+     *
+     * <p>Uses a manual scanner instead of a regex so a {@code :} inside a quoted literal
+     * or a parenthesized arm (e.g. {@code "2022-01-01 00:00:00"} or
+     * {@code ('hdr{X}'+"00:00:00")}) does not split the ternary at the wrong place.
+     */
+    private static String parseTernaryEqualsEmpty(String inner) {
+        if (inner == null) return null;
+        String s = inner.trim();
+        if (s.isEmpty()) return null;
+        char q = s.charAt(0);
+        if (q != '\'' && q != '"') return null;
+        int qEnd = s.indexOf(q, 1);
+        if (qEnd < 0) return null;
+        String quoted = s.substring(1, qEnd);
+        Matcher hm = HDR_IN_EXP_PATTERN.matcher(quoted);
+        if (!hm.matches()) return null;
+        String field = hm.group(1).trim();
+        int idx = qEnd + 1;
+        idx = skipWs(s, idx);
+        if (!s.regionMatches(idx, ".equals(", 0, ".equals(".length())) return null;
+        idx += ".equals(".length();
+        idx = skipWs(s, idx);
+        if (idx + 1 >= s.length()) return null;
+        char eq = s.charAt(idx);
+        if ((eq != '"' && eq != '\'') || s.charAt(idx + 1) != eq) return null;
+        idx += 2;
+        idx = skipWs(s, idx);
+        if (idx >= s.length() || s.charAt(idx) != ')') return null;
+        idx++;
+        idx = skipWs(s, idx);
+        if (idx >= s.length() || s.charAt(idx) != '?') return null;
+        idx++;
+        idx = skipWs(s, idx);
+        int colonIdx = findTopLevelColon(s, idx);
+        if (colonIdx < 0) return null;
+        String thenJslt = parseTernaryArm(s.substring(idx, colonIdx));
+        String elseJslt = parseTernaryArm(s.substring(colonIdx + 1));
+        if (thenJslt == null || elseJslt == null) return null;
+        return "if (" + toJsltSelector(field) + ") " + elseJslt + " else " + thenJslt;
+    }
+
+    /**
+     * Translates one ternary arm. Accepts: optional outer parens, a single quoted
+     * literal (single or double quotes; if the contents are {@code hdr{F}} returns the
+     * selector), a bare {@code hdr{F}}, or a {@code +}/{@code .concat()} chain whose tokens
+     * are themselves any of the above.
+     */
+    private static String parseTernaryArm(String arm) {
+        if (arm == null) return null;
+        String s = arm.trim();
+        if (s.length() >= 2 && s.charAt(0) == '(' && s.charAt(s.length() - 1) == ')'
+                && isOuterParensBalanced(s)) {
+            s = s.substring(1, s.length() - 1).trim();
+        }
+        if (s.length() >= 2) {
+            char first = s.charAt(0);
+            char last = s.charAt(s.length() - 1);
+            if (first == last && (first == '\'' || first == '"')
+                    && s.indexOf(first, 1) == s.length() - 1) {
+                String contents = s.substring(1, s.length() - 1);
+                Matcher m = HDR_IN_EXP_PATTERN.matcher(contents);
+                if (m.matches()) {
+                    return toJsltSelector(m.group(1).trim());
+                }
+                return quoteJsltString(contents);
+            }
+        }
+        if (s.startsWith("hdr{") && s.endsWith("}") && s.indexOf('}') == s.length() - 1) {
+            return toJsltSelector(s.substring(4, s.length() - 1).trim());
+        }
+        if (s.contains("+")) {
+            String chain = parsePlusChain(s);
+            if (chain != null) return chain;
+        }
+        if (s.contains(".concat(")) {
+            String chain = parseConcatChain(s);
+            if (chain != null) return chain;
+        }
+        return null;
+    }
+
+    private static int skipWs(String s, int idx) {
+        while (idx < s.length() && Character.isWhitespace(s.charAt(idx))) idx++;
+        return idx;
+    }
+
+    private static int findTopLevelColon(String s, int start) {
+        int depth = 0;
+        int i = start;
+        while (i < s.length()) {
+            char c = s.charAt(i);
+            if (c == '\'' || c == '"') {
+                int end = s.indexOf(c, i + 1);
+                if (end < 0) return -1;
+                i = end + 1;
+                continue;
+            }
+            if (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth < 0) return -1;
+            } else if (c == ':' && depth == 0) {
+                return i;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    private static boolean isOuterParensBalanced(String s) {
+        int depth = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\'' || c == '"') {
+                int end = s.indexOf(c, i + 1);
+                if (end < 0) return false;
+                i = end;
+                continue;
+            }
+            if (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth < 0) return false;
+                if (depth == 0 && i < s.length() - 1) return false;
+            }
+        }
+        return depth == 0;
+    }
+
+    /**
+     * Parses a boolean expression made of {@code 'hdr{F}'.equals('')} terms joined by
+     * {@code &&}/{@code ||}, optionally wrapped in {@code !(...)}. Emits the corresponding
+     * JSLT using {@code ==}, {@code and}/{@code or}, and {@code not(...)}.
+     * Returns null if any term does not match the equals-empty shape.
+     */
+    private static String parseBooleanEqualsEmpty(String inner) {
+        String s = inner.trim();
+        boolean negated = false;
+        if (s.startsWith("!(") && s.endsWith(")")) {
+            s = s.substring(2, s.length() - 1).trim();
+            negated = true;
+        }
+        String op;
+        String[] terms;
+        if (s.contains("&&")) {
+            op = "and";
+            terms = s.split("\\s*&&\\s*");
+        } else if (s.contains("||")) {
+            op = "or";
+            terms = s.split("\\s*\\|\\|\\s*");
+        } else {
+            op = null;
+            terms = new String[]{s};
+        }
+        List<String> parts = new ArrayList<>();
+        for (String t : terms) {
+            Matcher m = BOOL_EQ_EMPTY_TERM_PATTERN.matcher(t);
+            if (!m.matches()) return null;
+            parts.add(toJsltSelector(m.group(2).trim()) + " == \"\"");
+        }
+        String body = op == null ? parts.get(0) : String.join(" " + op + " ", parts);
+        return negated ? "not(" + body + ")" : body;
     }
 
     private static String quoteJsltString(String s) {
