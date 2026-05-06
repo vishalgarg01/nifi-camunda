@@ -346,14 +346,19 @@ public final class JsltMappingUtil {
         if (!skipDefaultTimeWrap && existingDateFormat != null && existingDateFormat.contains("HH")) {
             String defaultTimeSuffix = buildDefaultTimeSuffix(existingDateFormat);
             if (defaultTimeSuffix != null) {
-                effectiveExpr = "if (contains(" + expr + ", \":\")) " + expr
+                effectiveExpr = "if (contains(\":\", " + expr + ")) " + expr
                         + " else " + expr + " + " + quoteJsltString(defaultTimeSuffix);
             }
         }
-        String parseCall = "parse-time(" + effectiveExpr + ", " + quoteJsltString(existingDateFormat)
-                + (timezoneId != null && !timezoneId.isEmpty() ? ", " + quoteJsltString(timezoneId) : "") + ")";
-        String formatCall = "format-time(" + parseCall + ", " + quoteJsltString(newDateFormat)
-                + (timezoneId != null && !timezoneId.isEmpty() ? ", " + quoteJsltString(timezoneId) : "") + ")";
+        String tzSuffix = (timezoneId != null && !timezoneId.isEmpty()) ? ", " + quoteJsltString(timezoneId) : "";
+        // parse-time's 3rd arg is the fallback returned when parsing fails. Chain ISO-8601 variants
+        // so inputs like "2026-05-03T00:00:05.000-06:00" still parse when existingDateFormat is
+        // configured as a non-ISO pattern (e.g. "yyyy-MM-dd HH:mm:ss").
+        String isoFallback = "parse-time(" + expr + ", \"yyyy-MM-dd'T'HH:mm:ss.SSSXXX\"" + tzSuffix
+                + ", parse-time(" + expr + ", \"yyyy-MM-dd'T'HH:mm:ssXXX\"" + tzSuffix + ", 0))";
+        String parseCall = "parse-time(" + effectiveExpr + ", " + quoteJsltString(existingDateFormat) + tzSuffix
+                + ", " + isoFallback + ")";
+        String formatCall = "format-time(" + parseCall + ", " + quoteJsltString(newDateFormat) + tzSuffix + ")";
         if (nullGuard != null && !nullGuard.isEmpty()) {
             return "if (" + nullGuard + ") " + formatCall + " else null";
         }

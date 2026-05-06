@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "QlyO4Z6HxIeh0BIiYpZtIt1RA";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "cVYDF8G9fWdU3UOpUYZW2JmEsJ4IehA7sAyYoYFe";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "gq0sZcIRFWV2Z7w8LntPbBzFy";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "hMegAFsxEnAHNbYpUkSJ2AkkxqW9D8dtvZpSIbSQ";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
