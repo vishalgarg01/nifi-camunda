@@ -1335,6 +1335,8 @@ public class NifiMigrationService {
                     ctx.getSplitResponse() ? toSingleObjectJsonPath(ctx.getLineNo()) : normalizeLineNoJsonPath(ctx.getLineNo()));
         } else if ("jslt".equals(part) && ctx.getJsltScript() != null) {
             putByKey(config, "transformation", ctx.getJsltScript());
+            putByKey(config, "bulkApiCall", "false");
+
         } else if ("jolt".equals(part) && ctx.getJoltSpec() != null) {
             putByKey(config, "joltTransformation", ctx.getJoltSpec());
         }
