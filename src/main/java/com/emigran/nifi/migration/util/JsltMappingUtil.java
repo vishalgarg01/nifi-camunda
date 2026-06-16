@@ -432,6 +432,15 @@ public final class JsltMappingUtil {
             if (ternary != null) return ternary;
         }
 
+        // Ternary 'hdr{X}'.equals("VALUE")?<thenArm>:<elseArm> or .equalsIgnoreCase variant —
+        // string-equality conditional. Runs after the empty-string handler so .equals("") keeps
+        // its truthy semantics (which also catches null), while non-empty values use a direct
+        // == comparison (and lowercase() on both sides for equalsIgnoreCase).
+        if ((inner.contains(".equals(") || inner.contains(".equalsIgnoreCase(")) && inner.contains("?")) {
+            String ternary = parseTernaryStringCompare(inner);
+            if (ternary != null) return ternary;
+        }
+
         // Boolean expression of 'hdr{X}'.equals('') terms joined by &&/||, optionally wrapped in !(...)
         if (inner.contains(".equals(")) {
             String bool = parseBooleanEqualsEmpty(inner);
@@ -655,6 +664,69 @@ public final class JsltMappingUtil {
         String elseJslt = parseTernaryArm(s.substring(colonIdx + 1));
         if (thenJslt == null || elseJslt == null) return null;
         return "if (" + toJsltSelector(field) + ") " + elseJslt + " else " + thenJslt;
+    }
+
+    /**
+     * Parses {@code <quote>hdr{F}<quote>.equals("VALUE")?<thenArm>:<elseArm>} (or the
+     * {@code .equalsIgnoreCase} variant) into JSLT
+     * {@code if (.F == "VALUE") <thenArm> else <elseArm>}. For {@code equalsIgnoreCase},
+     * both sides are lowercased: {@code if (lowercase(.F) == "value") ...}.
+     *
+     * <p>Distinct from {@link #parseTernaryEqualsEmpty}: empty-string compare uses JSLT
+     * truthiness so it catches both null and "". A general value compare cannot do that
+     * (e.g. {@code .equals("Sales")} is only true when the field is exactly "Sales"),
+     * so a direct {@code ==} is used.
+     */
+    private static String parseTernaryStringCompare(String inner) {
+        if (inner == null) return null;
+        String s = inner.trim();
+        if (s.isEmpty()) return null;
+        char q = s.charAt(0);
+        if (q != '\'' && q != '"') return null;
+        int qEnd = s.indexOf(q, 1);
+        if (qEnd < 0) return null;
+        String quoted = s.substring(1, qEnd);
+        Matcher hm = HDR_IN_EXP_PATTERN.matcher(quoted);
+        if (!hm.matches()) return null;
+        String field = hm.group(1).trim();
+        int idx = qEnd + 1;
+        idx = skipWs(s, idx);
+        boolean ignoreCase;
+        if (s.regionMatches(idx, ".equalsIgnoreCase(", 0, ".equalsIgnoreCase(".length())) {
+            ignoreCase = true;
+            idx += ".equalsIgnoreCase(".length();
+        } else if (s.regionMatches(idx, ".equals(", 0, ".equals(".length())) {
+            ignoreCase = false;
+            idx += ".equals(".length();
+        } else {
+            return null;
+        }
+        idx = skipWs(s, idx);
+        if (idx >= s.length()) return null;
+        char vq = s.charAt(idx);
+        if (vq != '"' && vq != '\'') return null;
+        int valEnd = s.indexOf(vq, idx + 1);
+        if (valEnd < 0) return null;
+        String compareValue = s.substring(idx + 1, valEnd);
+        if (compareValue.isEmpty()) return null; // empty-string case is handled by parseTernaryEqualsEmpty
+        idx = valEnd + 1;
+        idx = skipWs(s, idx);
+        if (idx >= s.length() || s.charAt(idx) != ')') return null;
+        idx++;
+        idx = skipWs(s, idx);
+        if (idx >= s.length() || s.charAt(idx) != '?') return null;
+        idx++;
+        idx = skipWs(s, idx);
+        int colonIdx = findTopLevelColon(s, idx);
+        if (colonIdx < 0) return null;
+        String thenJslt = parseTernaryArm(s.substring(idx, colonIdx));
+        String elseJslt = parseTernaryArm(s.substring(colonIdx + 1));
+        if (thenJslt == null || elseJslt == null) return null;
+        String fieldSelector = toJsltSelector(field);
+        String condition = ignoreCase
+                ? "lowercase(" + fieldSelector + ") == " + quoteJsltString(compareValue.toLowerCase())
+                : fieldSelector + " == " + quoteJsltString(compareValue);
+        return "if (" + condition + ") " + thenJslt + " else " + elseJslt;
     }
 
     /**
