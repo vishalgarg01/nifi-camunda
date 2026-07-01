@@ -873,7 +873,7 @@ public class NifiMigrationService {
 
         config.put( "clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
         config.put( "clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
-//        putIfAbsent(config, "apiBaseUrl", DEFAULT_HTTP_WRITE_API_BASE_URL);
+        putIfAbsent(config, "apiBaseUrl", "https://ushccrm.cc.capillarytech.com");
 //        putIfAbsent(config, "oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
         config.put( "parseResponse", "false");
 
@@ -883,6 +883,20 @@ public class NifiMigrationService {
             if (existing == null || String.valueOf(existing).trim().isEmpty()) {
                 config.put("apiEndPoint", endpoint);
             }
+        }
+
+        applyNeoAuthorizationHeader(config, oldBlock);
+    }
+
+    private void applyNeoAuthorizationHeader(Map<String, Object> config, Block oldBlock) {
+        if (oldBlock == null || oldBlock.getFields() == null) return;
+        String authorization = getFieldValueFromFields(oldBlock.getFields(), "Authorization");
+        if (authorization == null || authorization.trim().isEmpty()) return;
+        try {
+            Map<String, String> headers = new LinkedHashMap<>();
+            headers.put("Authorization", authorization.trim());
+            config.put("additionalHeaders", CONFIG_CACHE_MAPPER.writeValueAsString(headers));
+        } catch (Exception ignored) {
         }
     }
 
@@ -902,17 +916,16 @@ public class NifiMigrationService {
             path = url.trim();
         }
         if (path == null) return null;
-        String prefix = "/api/v1/xto6x/execute";
-        String remainder = path.startsWith(prefix) ? path.substring(prefix.length()) : path;
-        remainder = remainder == null ? "" : remainder.trim();
-        if (remainder.isEmpty()) return null;
-        if (!remainder.startsWith("/")) {
-            remainder = "/" + remainder;
+        path = path.trim();
+        if (path.isEmpty()) return null;
+        if (!path.startsWith("/")) {
+            path = "/" + path;
         }
-        if (remainder.startsWith("/x/neo/")) {
-            return remainder;
+        String prefix = "/extensions/neo";
+        if (path.startsWith(prefix)) {
+            return path;
         }
-        return "/x/neo" + remainder;
+        return prefix + path;
     }
 
     private void putIfAbsent(Map<String, Object> config, String key, Object value) {
