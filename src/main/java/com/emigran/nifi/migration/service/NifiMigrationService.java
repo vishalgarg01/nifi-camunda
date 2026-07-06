@@ -69,8 +69,8 @@ public class NifiMigrationService {
     private static final int CONVERT_CSV_TO_JSON_BLOCK_ID = 72;
     private static final int JSLT_TRANSFORM_BLOCK_ID = 13820;
     private static final int JOLT_TRANSFORM_BLOCK_ID = 13821;
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "l41NLoD2ig96vpLpPCUQT9kMv";
-    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "3fGa7VMSybOSDGIYM1WJBdfvTo99WuPhV5QYDTMb";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_KEY = "7PTYAzk91UMWqgFiSVfHHRiur";
+    private static final String DEFAULT_HTTP_WRITE_CLIENT_SECRET = "Sqn37J3XRFeSRe7YThndmV7JyxyTOn33Pwd9TUIq";
     private static final Set<String> CONFIG_MANAGER_GLOBAL_KEYS = Collections.unmodifiableSet(new HashSet<>(
             Arrays.asList("hostname", "username", "password", "private_key_path", "key_passphrase",
                     "s3BucketName", "s3AccessKey", "s3SecretKey", "dataBricksToken", "clientKey", "clientSecret")));
@@ -873,7 +873,7 @@ public class NifiMigrationService {
 
         config.put( "clientKey", DEFAULT_HTTP_WRITE_CLIENT_KEY);
         config.put( "clientSecret", DEFAULT_HTTP_WRITE_CLIENT_SECRET);
-        putIfAbsent(config, "apiBaseUrl", "https://ushccrm.cc.capillarytech.com");
+        config.put("apiBaseUrl", "https://ushccrm.cc.capillarytech.com");
 //        putIfAbsent(config, "oAuthBaseUrl", DEFAULT_HTTP_WRITE_OAUTH_BASE_URL);
         config.put( "parseResponse", "false");
 
@@ -893,9 +893,7 @@ public class NifiMigrationService {
         String authorization = getFieldValueFromFields(oldBlock.getFields(), "Authorization");
         if (authorization == null || authorization.trim().isEmpty()) return;
         try {
-            Map<String, String> headers = new LinkedHashMap<>();
-            headers.put("Authorization", authorization.trim());
-            config.put("additionalHeaders", CONFIG_CACHE_MAPPER.writeValueAsString(headers));
+            config.put("additionalHeaders", "\"Authorization\":" + CONFIG_CACHE_MAPPER.writeValueAsString(authorization.trim()));
         } catch (Exception ignored) {
         }
     }
